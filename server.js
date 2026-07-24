@@ -11,27 +11,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 app.use(express.json());
-
 app.use(express.static(path.join(__dirname, "public")));
-
-app.get("/api/health", (req, res) => {
-  res.json({
-    success: true,
-    message: "F.Learning Research API is running"
-  });
-});
 
 app.post("/api/search", async (req, res) => {
   try {
     const keyword = String(req.body.keyword || "").trim();
-
-    const countryCode = String(
-      req.body.countryCode || "us"
-    ).toLowerCase();
-
-    const languageCode = String(
-      req.body.languageCode || "en"
-    ).toLowerCase();
 
     if (!keyword) {
       return res.status(400).json({
@@ -43,92 +27,71 @@ app.post("/api/search", async (req, res) => {
     if (!APIFY_TOKEN) {
       return res.status(500).json({
         success: false,
-        error: "APIFY_TOKEN has not been configured"
+        error: "APIFY_TOKEN is missing"
       });
     }
 
+    const apifyEndpoint =
+      "https://api.apify.com/v2/actors/" +
+      "scraperlink~google-search-results-serp-scraper/" +
+      "run-sync-get-dataset-items";
+
     const actorInput = {
-      queries: keyword,
-      resultsPerPage: 10,
-      maxPagesPerQuery: 1,
-      countryCode,
-      languageCode,
-      includeUnfilteredResults: false,
-      saveHtml: false
+      country: "US",
+      include_merged: true,
+      keyword: keyword,
+      limit: "10",
+      lr: "lang_en",
+      start: 1
     };
 
-    const apifyUrl =
-      "https://api.apify.com/v2/acts/apify~google-search-scraper/" +
-      "run-sync-get-dataset-items" +
-      `?token=${encodeURIComponent(APIFY_TOKEN)}` +
-      "&format=json" +
-      "&clean=true";
-
-    const apifyResponse = await fetch(apifyUrl, {
+    const apifyResponse = await fetch(apifyEndpoint, {
       method: "POST",
+
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${APIFY_TOKEN}`
       },
+
       body: JSON.stringify(actorInput)
     });
 
-    if (!apifyResponse.ok) {
-      const apifyError = await apifyResponse.text();
+    const responseText = await apifyResponse.text();
 
-      console.error("Apify error:", apifyError);
+    if (!apifyResponse.ok) {
+      console.error("Apify error:", responseText);
 
       return res.status(502).json({
         success: false,
-        error: "Apify could not complete the Google search"
+        error: "Apify search failed",
+        details: responseText
       });
     }
 
-    const apifyData = await apifyResponse.json();
-
-    const organicResults = apifyData.flatMap((page) => {
-      return Array.isArray(page.organicResults)
-        ? page.organicResults
-        : [];
-    });
-
-    const results = organicResults
-      .slice(0, 10)
-      .map((item, index) => ({
-        position: item.position || index + 1,
-        title: item.title || "Untitled article",
-        url: item.url || "",
-        description: item.description || "",
-        domain: getDomain(item.url)
-      }));
+    const apifyData = JSON.parse(responseText);
 
     return res.json({
       success: true,
       keyword,
-      countryCode,
-      languageCode,
-      count: results.length,
-      results
+      count: Array.isArray(apifyData)
+        ? apifyData.length
+        : 0,
+      rawResults: apifyData
     });
   } catch (error) {
     console.error("Search error:", error);
 
     return res.status(500).json({
       success: false,
-      error: "An unexpected server error occurred"
+      error: "Unexpected server error"
     });
   }
 });
 
-function getDomain(url) {
-  try {
-    return new URL(url).hostname.replace("www.", "");
-  } catch {
-    return "";
-  }
-}
-
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.sendFile(
+    path.join(__dirname, "public", "index.html")
+  );
 });
 
 app.listen(PORT, "0.0.0.0", () => {
