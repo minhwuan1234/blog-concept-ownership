@@ -160,7 +160,7 @@ async function searchArticlesWithApify(keyword) {
      * Request more than 10 because blocked URLs
      * and duplicate results will be removed.
      */
-    maxResults: 20,
+    maxResults: 3,
 
     outputFormats: [
       "markdown"
