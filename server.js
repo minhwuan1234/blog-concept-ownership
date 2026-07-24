@@ -130,9 +130,15 @@ app.post("/api/search", async (req, res) => {
       .map((item, index) => normalizeRagResult(item, index))
       .filter((item) => item.url);
 
-    const filteredItems = normalizedItems
-      .filter((item) => !isBlockedUrl(item.url))
-      .slice(0, 10);
+const filteredItems = normalizedItems
+  .filter((item) => !isBlockedUrl(item.url))
+  .sort((a, b) => a.position - b.position)
+  .slice(0, 10)
+  .map((item, index) => ({
+    ...item,
+    originalPosition: item.position,
+    position: index + 1
+  }));
 
     return res.json({
       success: true,
@@ -199,16 +205,23 @@ function normalizeRagResult(item, index) {
     item?.metadata?.description ||
     createSnippet(markdown);
 
-  return {
-    position: index + 1,
-    title,
-    url,
-    description,
-    domain: getDomain(url),
+ const position = Number(
+  item?.position ||
+  item?.rank ||
+  item?.searchPosition ||
+  item?.search_position ||
+  item?.metadata?.position ||
+  index + 1
+);
 
-    // Giữ lại để dùng ở bước phân tích article sau
-    markdown
-  };
+return {
+  position,
+  title,
+  url,
+  description,
+  domain: getDomain(url),
+  markdown
+};
 }
 
 function isBlockedUrl(url) {
