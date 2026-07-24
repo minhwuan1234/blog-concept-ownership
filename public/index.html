@@ -20,11 +20,18 @@
   <main class="app">
     <header class="header">
       <div class="brand">
-        <div class="brand-logo">F.</div>
+        <div class="brand-logo">
+          F.
+        </div>
 
         <div>
-          <strong>F.Learning Research</strong>
-          <span>Blog Concept Ownership</span>
+          <strong>
+            F.Learning Research
+          </strong>
+
+          <span>
+            Blog Concept Ownership
+          </span>
         </div>
       </div>
 
@@ -43,12 +50,13 @@
       </h1>
 
       <p class="hero-description">
-        Search Google through Apify and collect the first
-        10 competitor articles.
+        Search and collect the highest-ranking competitor articles
+        while generating a keyword-only AI search intent overview.
       </p>
     </section>
 
     <section class="workspace">
+      <!-- LEFT PANEL -->
       <form
         id="search-form"
         class="search-panel"
@@ -62,7 +70,9 @@
             id="keyword"
             name="keyword"
             type="text"
-            placeholder="Example: employee onboarding video"
+            placeholder="Example: learning and development"
+            autocomplete="off"
+            maxlength="250"
             required
           >
         </div>
@@ -133,6 +143,134 @@
         </button>
       </form>
 
+      <!-- AI OVERVIEW -->
+      <section
+        id="overview-panel"
+        class="overview-panel"
+      >
+        <div class="overview-header">
+          <div>
+            <p class="eyebrow">
+              AI OVERVIEW
+            </p>
+
+            <h2>
+              Search Intent
+            </h2>
+          </div>
+
+          <span
+            id="overview-status"
+            class="overview-status"
+          >
+            Waiting
+          </span>
+        </div>
+
+        <div
+          id="overview-message"
+          class="overview-message"
+        >
+          Enter a keyword to generate WHO, WHAT and WHY.
+        </div>
+
+        <div
+          id="overview-content"
+          class="overview-content hidden"
+        >
+          <!-- WHO -->
+          <article class="intent-card">
+            <div class="intent-number">
+              01
+            </div>
+
+            <div class="intent-body">
+              <div class="intent-heading">
+                <h3>
+                  WHO
+                </h3>
+
+                <span
+                  id="who-confidence"
+                  class="confidence"
+                ></span>
+              </div>
+
+              <p
+                id="who-summary"
+                class="intent-summary"
+              ></p>
+
+              <ul
+                id="who-details"
+                class="intent-details"
+              ></ul>
+            </div>
+          </article>
+
+          <!-- WHAT -->
+          <article class="intent-card">
+            <div class="intent-number">
+              02
+            </div>
+
+            <div class="intent-body">
+              <div class="intent-heading">
+                <h3>
+                  WHAT
+                </h3>
+
+                <span
+                  id="what-confidence"
+                  class="confidence"
+                ></span>
+              </div>
+
+              <p
+                id="what-summary"
+                class="intent-summary"
+              ></p>
+
+              <ul
+                id="what-details"
+                class="intent-details"
+              ></ul>
+            </div>
+          </article>
+
+          <!-- WHY -->
+          <article class="intent-card">
+            <div class="intent-number">
+              03
+            </div>
+
+            <div class="intent-body">
+              <div class="intent-heading">
+                <h3>
+                  WHY
+                </h3>
+
+                <span
+                  id="why-confidence"
+                  class="confidence"
+                ></span>
+              </div>
+
+              <p
+                id="why-summary"
+                class="intent-summary"
+              ></p>
+
+              <ul
+                id="why-details"
+                class="intent-details"
+              ></ul>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- COMPETITOR RESULTS -->
       <section class="results-panel">
         <div class="results-header">
           <div>
@@ -165,6 +303,7 @@
     </section>
   </main>
 
+  <!-- ARTICLE RESULT TEMPLATE -->
   <template id="result-template">
     <li class="result-card">
       <div class="result-position"></div>
