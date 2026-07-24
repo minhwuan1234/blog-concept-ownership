@@ -672,6 +672,53 @@ function extractOpenAIOutputText(response) {
   return "";
 }
 
+function validateOverviewResponse(data) {
+  if (!data || typeof data !== "object") {
+    throw new Error(
+      "OpenAI overview has an invalid root structure"
+    );
+  }
+
+  const requiredSections = [
+    "overview",
+    "who",
+    "what",
+    "why"
+  ];
+
+  for (const section of requiredSections) {
+    if (
+      !data[section] ||
+      typeof data[section] !== "object"
+    ) {
+      throw new Error(
+        `OpenAI overview is missing section: ${section}`
+      );
+    }
+  }
+
+  if (
+    typeof data.overview.answer !== "string" ||
+    !Array.isArray(data.overview.keyPoints) ||
+    typeof data.overview.confidence !== "string"
+  ) {
+    throw new Error(
+      "OpenAI overview section has an invalid structure"
+    );
+  }
+
+  for (const section of ["who", "what", "why"]) {
+    if (
+      typeof data[section].summary !== "string" ||
+      !Array.isArray(data[section].details) ||
+      typeof data[section].confidence !== "string"
+    ) {
+      throw new Error(
+        `OpenAI ${section} section has an invalid structure`
+      );
+    }
+  }
+}
 /**
  * Normalize one Apify RAG Web Browser result.
  */
