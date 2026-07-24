@@ -1,32 +1,97 @@
 const searchForm =
-  document.querySelector("#search-form");
+  document.querySelector(
+    "#search-form"
+  );
 
 const searchButton =
-  document.querySelector("#search-button");
-
-const resultsTitle =
-  document.querySelector("#results-title");
-
-const resultsCount =
-  document.querySelector("#results-count");
-
-const resultsList =
-  document.querySelector("#results-list");
-
-const statusBox =
-  document.querySelector("#status");
-
-const resultTemplate =
-  document.querySelector("#result-template");
+  document.querySelector(
+    "#search-button"
+  );
 
 const overviewStatus =
-  document.querySelector("#overview-status");
+  document.querySelector(
+    "#overview-status"
+  );
 
 const overviewMessage =
-  document.querySelector("#overview-message");
+  document.querySelector(
+    "#overview-message"
+  );
 
 const overviewContent =
-  document.querySelector("#overview-content");
+  document.querySelector(
+    "#overview-content"
+  );
+
+const competitorStatus =
+  document.querySelector(
+    "#competitor-status"
+  );
+
+const competitorMessage =
+  document.querySelector(
+    "#competitor-message"
+  );
+
+const competitorMap =
+  document.querySelector(
+    "#competitor-map"
+  );
+
+const anglesCount =
+  document.querySelector(
+    "#angles-count"
+  );
+
+const anglesMessage =
+  document.querySelector(
+    "#angles-message"
+  );
+
+const anglesList =
+  document.querySelector(
+    "#angles-list"
+  );
+
+const questionsCount =
+  document.querySelector(
+    "#questions-count"
+  );
+
+const questionsMessage =
+  document.querySelector(
+    "#questions-message"
+  );
+
+const questionsList =
+  document.querySelector(
+    "#questions-list"
+  );
+
+const resultsTitle =
+  document.querySelector(
+    "#results-title"
+  );
+
+const resultsCount =
+  document.querySelector(
+    "#results-count"
+  );
+
+const resultsList =
+  document.querySelector(
+    "#results-list"
+  );
+
+const statusBox =
+  document.querySelector(
+    "#status"
+  );
+
+const resultTemplate =
+  document.querySelector(
+    "#result-template"
+  );
 
 searchForm.addEventListener(
   "submit",
@@ -34,18 +99,30 @@ searchForm.addEventListener(
     event.preventDefault();
 
     const formData =
-      new FormData(searchForm);
+      new FormData(
+        searchForm
+      );
 
-    const keyword = String(
-      formData.get("keyword") || ""
-    ).trim();
+    const keyword =
+      String(
+        formData.get(
+          "keyword"
+        ) || ""
+      ).trim();
+
+    const companyContext =
+      String(
+        formData.get(
+          "companyContext"
+        ) || ""
+      ).trim();
 
     if (!keyword) {
-      showArticleError(
+      showOverviewError(
         "Please enter a keyword."
       );
 
-      showOverviewError(
+      showCompetitorError(
         "Please enter a keyword."
       );
 
@@ -55,109 +132,146 @@ searchForm.addEventListener(
     startLoading(keyword);
 
     /**
-     * Start both requests at the same time.
-     *
-     * Each request updates its own UI independently.
+     * Both branches start at the same time.
      */
-    const articleRequest =
-      requestArticles(keyword);
-
     const overviewRequest =
-      requestOverview(keyword);
+      requestOverview(
+        keyword
+      );
+
+    const competitorRequest =
+      requestCompetitorResearch({
+        keyword,
+        companyContext
+      });
 
     await Promise.allSettled([
-      articleRequest,
-      overviewRequest
+      overviewRequest,
+      competitorRequest
     ]);
 
     stopLoading();
   }
 );
 
-/**
- * OpenAI request.
- *
- * This does not wait for Apify.
- */
-async function requestOverview(keyword) {
+async function requestOverview(
+  keyword
+) {
   try {
     const response =
-      await fetch("/api/overview", {
-        method: "POST",
+      await fetch(
+        "/api/overview",
+        {
+          method: "POST",
 
-        headers: {
-          "Content-Type":
-            "application/json"
-        },
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
 
-        body: JSON.stringify({
-          keyword
-        })
-      });
+          body:
+            JSON.stringify({
+              keyword
+            })
+        }
+      );
 
     const data =
-      await readJsonResponse(response);
+      await readJsonResponse(
+        response
+      );
 
-    if (!response.ok || !data.success) {
+    if (
+      !response.ok ||
+      !data.success
+    ) {
       throw new Error(
         data.error ||
-        "AI Overview could not be generated."
+        "Keyword overview failed."
       );
     }
 
-    renderOverview(data.data);
+    renderOverview(
+      data.data
+    );
   } catch (error) {
     console.error(
-      "Overview frontend error:",
+      "Overview error:",
       error
     );
 
     showOverviewError(
       error?.message ||
-      "AI Overview could not be generated."
+      "Keyword overview failed."
     );
   }
 }
 
-/**
- * Apify request.
- *
- * This does not wait for OpenAI.
- */
-async function requestArticles(keyword) {
+async function requestCompetitorResearch({
+  keyword,
+  companyContext
+}) {
   try {
     const response =
-      await fetch("/api/search", {
-        method: "POST",
+      await fetch(
+        "/api/competitor-research",
+        {
+          method: "POST",
 
-        headers: {
-          "Content-Type":
-            "application/json"
-        },
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
 
-        body: JSON.stringify({
-          keyword
-        })
-      });
+          body:
+            JSON.stringify({
+              keyword,
+              companyContext
+            })
+        }
+      );
 
     const data =
-      await readJsonResponse(response);
+      await readJsonResponse(
+        response
+      );
 
-    if (!response.ok || !data.success) {
+    if (
+      !response.ok ||
+      !data.success
+    ) {
       throw new Error(
         data.error ||
-        "Article search failed."
+        "Competitor research failed."
       );
     }
 
-    renderResults(
+    renderArticles(
       keyword,
-      data.results
+      data.articles
+    );
+
+    if (!data.research) {
+      showCompetitorError(
+        data.warning ||
+        "No competitor research was generated."
+      );
+
+      return;
+    }
+
+    renderCompetitorResearch(
+      data.research
     );
   } catch (error) {
     console.error(
-      "Article frontend error:",
+      "Competitor research error:",
       error
+    );
+
+    showCompetitorError(
+      error?.message ||
+      "Competitor research failed."
     );
 
     showArticleError(
@@ -167,7 +281,9 @@ async function requestArticles(keyword) {
   }
 }
 
-async function readJsonResponse(response) {
+async function readJsonResponse(
+  response
+) {
   try {
     return await response.json();
   } catch {
@@ -179,12 +295,74 @@ async function readJsonResponse(response) {
 
 function startLoading(keyword) {
   searchButton.disabled = true;
+
   searchButton.textContent =
     "Running research...";
 
-  /*
-   * Article loading state
-   */
+  overviewStatus.textContent =
+    "Generating";
+
+  overviewStatus.className =
+    "panel-status loading";
+
+  overviewMessage.textContent =
+    "OpenAI is analysing the keyword.";
+
+  overviewMessage.className =
+    "panel-message";
+
+  overviewContent.classList.add(
+    "hidden"
+  );
+
+  competitorStatus.textContent =
+    "Analysing";
+
+  competitorStatus.className =
+    "panel-status loading";
+
+  competitorMessage.textContent =
+    "Apify is crawling competitor articles. OpenAI will analyse their Markdown after extraction.";
+
+  competitorMessage.className =
+    "panel-message";
+
+  competitorMap.classList.add(
+    "hidden"
+  );
+
+  competitorMap.replaceChildren();
+
+  anglesCount.textContent =
+    "0 angles";
+
+  anglesMessage.textContent =
+    "Waiting for competitor analysis.";
+
+  anglesMessage.className =
+    "panel-message";
+
+  anglesList.classList.add(
+    "hidden"
+  );
+
+  anglesList.replaceChildren();
+
+  questionsCount.textContent =
+    "0 questions";
+
+  questionsMessage.textContent =
+    "Waiting for competitor analysis.";
+
+  questionsMessage.className =
+    "panel-message";
+
+  questionsList.classList.add(
+    "hidden"
+  );
+
+  questionsList.replaceChildren();
+
   resultsTitle.textContent =
     `Searching for “${keyword}”`;
 
@@ -194,77 +372,54 @@ function startLoading(keyword) {
   resultsList.replaceChildren();
 
   statusBox.textContent =
-    "Apify is searching and crawling candidate articles.";
+    "Apify is searching and extracting Markdown.";
 
   statusBox.className =
-    "status";
-
-  /*
-   * OpenAI loading state
-   */
-  overviewStatus.textContent =
-    "Generating";
-
-  overviewStatus.className =
-    "overview-status loading";
-
-  overviewMessage.textContent =
-    "OpenAI is analysing the keyword.";
-
-  overviewMessage.className =
-    "overview-message";
-
-  overviewContent.classList.add(
-    "hidden"
-  );
+    "panel-message";
 }
 
 function stopLoading() {
   searchButton.disabled = false;
+
   searchButton.textContent =
-    "Run research search";
+    "Run research";
 }
 
-function renderOverview(overview) {
-  if (!overview) {
+function renderOverview(
+  data
+) {
+  if (!data) {
     showOverviewError(
-      "OpenAI returned no overview data."
+      "No overview data was returned."
     );
 
     return;
   }
 
   renderAiOverview(
-    overview.overview
+    data.overview
   );
 
-  const sequence = [
-    {
-      key: "who",
-      data: overview.who
-    },
-    {
-      key: "what",
-      data: overview.what
-    },
-    {
-      key: "why",
-      data: overview.why
-    }
-  ];
+  renderIntentSection(
+    "who",
+    data.who
+  );
 
-  for (const section of sequence) {
-    renderIntentSection(
-      section.key,
-      section.data
-    );
-  }
+  renderIntentSection(
+    "what",
+    data.what
+  );
+
+  renderIntentSection(
+    "why",
+    data.why
+  );
 
   overviewStatus.textContent =
     "Generated";
 
   overviewStatus.className =
-    "overview-status success";
+    "panel-status success";
 
   overviewMessage.classList.add(
     "hidden"
@@ -276,232 +431,722 @@ function renderOverview(overview) {
 }
 
 function renderAiOverview(data) {
-  const overviewData = data || {};
+  const safeData =
+    data || {};
 
-  const answerElement =
+  const answer =
     document.querySelector(
       "#ai-overview-answer"
     );
 
-  const pointsElement =
+  const points =
     document.querySelector(
       "#ai-overview-points"
     );
 
-  const confidenceElement =
+  const confidence =
     document.querySelector(
       "#ai-overview-confidence"
     );
 
-  if (
-    !answerElement ||
-    !pointsElement ||
-    !confidenceElement
-  ) {
-    throw new Error(
-      "AI Overview elements are missing from index.html."
-    );
-  }
-
-  answerElement.textContent =
-    overviewData.answer ||
+  answer.textContent =
+    safeData.answer ||
     "No overview generated.";
 
-  pointsElement.replaceChildren();
-
-  const keyPoints =
-    Array.isArray(
-      overviewData.keyPoints
-    )
-      ? overviewData.keyPoints
-      : [];
-
-  for (const point of keyPoints) {
-    const listItem =
-      document.createElement("li");
-
-    listItem.textContent = point;
-
-    pointsElement.appendChild(
-      listItem
-    );
-  }
+  renderList(
+    points,
+    safeData.keyPoints
+  );
 
   setConfidence(
-    confidenceElement,
-    overviewData.confidence
+    confidence,
+    safeData.confidence
   );
 }
 
 function renderIntentSection(
   key,
-  sectionData
+  data
 ) {
   const safeData =
-    sectionData || {};
+    data || {};
 
-  const summaryElement =
+  const summary =
     document.querySelector(
       `#${key}-summary`
     );
 
-  const detailsElement =
+  const details =
     document.querySelector(
       `#${key}-details`
     );
 
-  const confidenceElement =
+  const confidence =
     document.querySelector(
       `#${key}-confidence`
     );
 
-  if (
-    !summaryElement ||
-    !detailsElement ||
-    !confidenceElement
-  ) {
-    throw new Error(
-      `Missing HTML elements for ${key.toUpperCase()}.`
-    );
-  }
-
-  summaryElement.textContent =
+  summary.textContent =
     safeData.summary ||
     "No summary generated.";
 
-  detailsElement.replaceChildren();
-
-  const details =
-    Array.isArray(safeData.details)
-      ? safeData.details
-      : [];
-
-  for (const detail of details) {
-    const listItem =
-      document.createElement("li");
-
-    listItem.textContent = detail;
-
-    detailsElement.appendChild(
-      listItem
-    );
-  }
+  renderList(
+    details,
+    safeData.details
+  );
 
   setConfidence(
-    confidenceElement,
+    confidence,
     safeData.confidence
   );
 }
 
-function setConfidence(
-  element,
-  confidence
+function renderCompetitorResearch(
+  research
 ) {
-  const level =
-    confidence || "unknown";
+  renderCompetitorMap(
+    research.competitorMap
+  );
 
-  element.textContent =
-    `${level} confidence`;
+  renderAngles(
+    research.exclusiveAngles
+  );
 
-  element.dataset.level =
-    level;
-}
+  renderQuestions(
+    research.openQuestions
+  );
 
-function showOverviewError(message) {
-  overviewStatus.textContent =
-    "Failed";
+  competitorStatus.textContent =
+    "Generated";
 
-  overviewStatus.className =
-    "overview-status error";
+  competitorStatus.className =
+    "panel-status success";
 
-  overviewMessage.textContent =
-    message;
+  competitorMessage.classList.add(
+    "hidden"
+  );
 
-  overviewMessage.className =
-    "overview-message error";
-
-  overviewContent.classList.add(
+  competitorMap.classList.remove(
     "hidden"
   );
 }
 
-function renderResults(
-  keyword,
-  results
+function renderCompetitorMap(
+  items
 ) {
-  const safeResults =
-    Array.isArray(results)
-      ? results
+  const safeItems =
+    Array.isArray(items)
+      ? items
+      : [];
+
+  competitorMap.replaceChildren();
+
+  for (const item of safeItems) {
+    const card =
+      document.createElement(
+        "article"
+      );
+
+    card.className =
+      "competitor-card";
+
+    const header =
+      document.createElement(
+        "div"
+      );
+
+    header.className =
+      "competitor-card-header";
+
+    const titleWrap =
+      document.createElement(
+        "div"
+      );
+
+    const articleId =
+      document.createElement(
+        "span"
+      );
+
+    articleId.className =
+      "article-id";
+
+    articleId.textContent =
+      item.articleId;
+
+    const title =
+      document.createElement(
+        "a"
+      );
+
+    title.className =
+      "competitor-title";
+
+    title.href =
+      item.url || "#";
+
+    title.target =
+      "_blank";
+
+    title.rel =
+      "noopener noreferrer";
+
+    title.textContent =
+      item.title ||
+      "Untitled article";
+
+    titleWrap.append(
+      articleId,
+      title
+    );
+
+    const status =
+      document.createElement(
+        "span"
+      );
+
+    status.className =
+      "analysis-status";
+
+    status.dataset.status =
+      item.analysisStatus;
+
+    status.textContent =
+      formatLabel(
+        item.analysisStatus
+      );
+
+    header.append(
+      titleWrap,
+      status
+    );
+
+    const columns =
+      document.createElement(
+        "div"
+      );
+
+    columns.className =
+      "analysis-columns";
+
+    columns.append(
+      createAnalysisColumn(
+        "Strengths to match",
+        item.strengths,
+        "strength"
+      ),
+
+      createAnalysisColumn(
+        "Weaknesses / gaps",
+        item.weaknesses,
+        "weakness"
+      )
+    );
+
+    const note =
+      document.createElement(
+        "p"
+      );
+
+    note.className =
+      "analysis-note";
+
+    note.textContent =
+      item.analysisNote ||
+      "";
+
+    card.append(
+      header,
+      columns,
+      note
+    );
+
+    competitorMap.appendChild(
+      card
+    );
+  }
+}
+
+function createAnalysisColumn(
+  heading,
+  items,
+  type
+) {
+  const column =
+    document.createElement(
+      "section"
+    );
+
+  column.className =
+    `analysis-column ${type}`;
+
+  const title =
+    document.createElement(
+      "h4"
+    );
+
+  title.textContent =
+    heading;
+
+  const list =
+    document.createElement(
+      "div"
+    );
+
+  list.className =
+    "analysis-items";
+
+  const safeItems =
+    Array.isArray(items)
+      ? items
+      : [];
+
+  if (!safeItems.length) {
+    const empty =
+      document.createElement(
+        "p"
+      );
+
+    empty.className =
+      "empty-analysis";
+
+    empty.textContent =
+      "No supported points found.";
+
+    list.appendChild(empty);
+  }
+
+  for (const item of safeItems) {
+    const block =
+      document.createElement(
+        "div"
+      );
+
+    block.className =
+      "analysis-item";
+
+    const point =
+      document.createElement(
+        "strong"
+      );
+
+    point.textContent =
+      item.point || "";
+
+    const evidence =
+      document.createElement(
+        "p"
+      );
+
+    evidence.textContent =
+      item.evidence || "";
+
+    block.append(
+      point,
+      evidence
+    );
+
+    if (
+      type ===
+        "weakness" &&
+      item.opportunity
+    ) {
+      const opportunity =
+        document.createElement(
+          "p"
+        );
+
+      opportunity.className =
+        "opportunity";
+
+      opportunity.textContent =
+        `Opportunity: ${item.opportunity}`;
+
+      block.appendChild(
+        opportunity
+      );
+    }
+
+    list.appendChild(
+      block
+    );
+  }
+
+  column.append(
+    title,
+    list
+  );
+
+  return column;
+}
+
+function renderAngles(items) {
+  const safeItems =
+    Array.isArray(items)
+      ? items
+      : [];
+
+  anglesCount.textContent =
+    `${safeItems.length} angle${
+      safeItems.length === 1
+        ? ""
+        : "s"
+    }`;
+
+  anglesList.replaceChildren();
+
+  if (!safeItems.length) {
+    anglesMessage.textContent =
+      "No exclusive angles were identified.";
+
+    anglesMessage.className =
+      "panel-message";
+
+    anglesList.classList.add(
+      "hidden"
+    );
+
+    return;
+  }
+
+  anglesMessage.classList.add(
+    "hidden"
+  );
+
+  anglesList.classList.remove(
+    "hidden"
+  );
+
+  safeItems.forEach(
+    (item, index) => {
+      const card =
+        document.createElement(
+          "article"
+        );
+
+      card.className =
+        "angle-card";
+
+      const header =
+        document.createElement(
+          "div"
+        );
+
+      header.className =
+        "angle-header";
+
+      const number =
+        document.createElement(
+          "span"
+        );
+
+      number.className =
+        "angle-number";
+
+      number.textContent =
+        String(
+          index + 1
+        ).padStart(
+          2,
+          "0"
+        );
+
+      const ownership =
+        document.createElement(
+          "span"
+        );
+
+      ownership.className =
+        "ownership-status";
+
+      ownership.dataset.status =
+        item.ownershipStatus;
+
+      ownership.textContent =
+        formatLabel(
+          item.ownershipStatus
+        );
+
+      header.append(
+        number,
+        ownership
+      );
+
+      const title =
+        document.createElement(
+          "h3"
+        );
+
+      title.textContent =
+        item.angle || "";
+
+      const body =
+        document.createElement(
+          "div"
+        );
+
+      body.className =
+        "angle-details";
+
+      body.append(
+        createLabeledText(
+          "Why it matters",
+          item.whyItMatters
+        ),
+
+        createLabeledText(
+          "Competitor gap",
+          item.competitorGap
+        ),
+
+        createLabeledText(
+          "Why the team can own it",
+          item.whyTeamCanOwnIt
+        ),
+
+        createLabeledList(
+          "Required internal evidence",
+          item.requiredInternalEvidence
+        )
+      );
+
+      const share =
+        document.createElement(
+          "div"
+        );
+
+      share.className =
+        "article-share";
+
+      share.textContent =
+        `Suggested article share: ${item.recommendedArticleSharePercent || 0}%`;
+
+      card.append(
+        header,
+        title,
+        body,
+        share
+      );
+
+      anglesList.appendChild(
+        card
+      );
+    }
+  );
+}
+
+function renderQuestions(items) {
+  const safeItems =
+    Array.isArray(items)
+      ? items
+      : [];
+
+  questionsCount.textContent =
+    `${safeItems.length} question${
+      safeItems.length === 1
+        ? ""
+        : "s"
+    }`;
+
+  questionsList.replaceChildren();
+
+  if (!safeItems.length) {
+    questionsMessage.textContent =
+      "No open questions were generated.";
+
+    questionsMessage.className =
+      "panel-message";
+
+    questionsList.classList.add(
+      "hidden"
+    );
+
+    return;
+  }
+
+  questionsMessage.classList.add(
+    "hidden"
+  );
+
+  questionsList.classList.remove(
+    "hidden"
+  );
+
+  safeItems.forEach(
+    (item, index) => {
+      const card =
+        document.createElement(
+          "article"
+        );
+
+      card.className =
+        "question-card";
+
+      const header =
+        document.createElement(
+          "div"
+        );
+
+      header.className =
+        "question-header";
+
+      const number =
+        document.createElement(
+          "span"
+        );
+
+      number.textContent =
+        `Q${index + 1}`;
+
+      const priority =
+        document.createElement(
+          "span"
+        );
+
+      priority.className =
+        "priority";
+
+      priority.dataset.level =
+        item.priority;
+
+      priority.textContent =
+        `${item.priority || "unknown"} priority`;
+
+      header.append(
+        number,
+        priority
+      );
+
+      const question =
+        document.createElement(
+          "h3"
+        );
+
+      question.textContent =
+        item.question || "";
+
+      const reason =
+        createLabeledText(
+          "Why this question exists",
+          item.reason
+        );
+
+      const source =
+        createLabeledText(
+          "Required source type",
+          item.requiredSourceType
+        );
+
+      const triggered =
+        createLabeledList(
+          "Triggered by",
+          item.triggeredByArticleIds
+        );
+
+      card.append(
+        header,
+        question,
+        reason,
+        source,
+        triggered
+      );
+
+      questionsList.appendChild(
+        card
+      );
+    }
+  );
+}
+
+function renderArticles(
+  keyword,
+  items
+) {
+  const safeItems =
+    Array.isArray(items)
+      ? items
       : [];
 
   resultsTitle.textContent =
     `Results for “${keyword}”`;
 
   resultsCount.textContent =
-    `${safeResults.length} article${
-      safeResults.length === 1
+    `${safeItems.length} article${
+      safeItems.length === 1
         ? ""
         : "s"
     }`;
 
   resultsList.replaceChildren();
 
-  if (!safeResults.length) {
+  if (!safeItems.length) {
     statusBox.textContent =
-      "Search completed, but no eligible articles were found.";
+      "No eligible competitor articles were found.";
 
     statusBox.className =
-      "status";
+      "panel-message";
 
     return;
   }
 
-  statusBox.className =
-    "status hidden";
+  statusBox.classList.add(
+    "hidden"
+  );
 
   const fragment =
     document.createDocumentFragment();
 
-  safeResults.forEach(
+  safeItems.forEach(
     (result, index) => {
-      const item =
-        resultTemplate.content.cloneNode(
-          true
-        );
+      const node =
+        resultTemplate
+          .content
+          .cloneNode(true);
 
-      item.querySelector(
-        ".result-position"
-      ).textContent =
-        String(
-          result.position ||
-          index + 1
-        ).padStart(2, "0");
+      node
+        .querySelector(
+          ".result-position"
+        )
+        .textContent =
+          String(
+            result.position ||
+            index + 1
+          ).padStart(
+            2,
+            "0"
+          );
 
-      item.querySelector(
-        ".result-domain"
-      ).textContent =
-        result.domain ||
-        "Unknown domain";
+      node
+        .querySelector(
+          ".result-domain"
+        )
+        .textContent =
+          result.domain ||
+          "Unknown domain";
 
-      const titleElement =
-        item.querySelector(
+      const title =
+        node.querySelector(
           ".result-title"
         );
 
-      titleElement.textContent =
+      title.textContent =
         result.title ||
         "Untitled article";
 
-      titleElement.href =
+      title.href =
         result.url || "#";
 
-      item.querySelector(
-        ".result-description"
-      ).textContent =
-        result.description ||
-        "No description available.";
+      node
+        .querySelector(
+          ".result-description"
+        )
+        .textContent =
+          result.description ||
+          "No description available.";
 
-      fragment.appendChild(item);
+      fragment.appendChild(
+        node
+      );
     }
   );
 
@@ -510,16 +1155,207 @@ function renderResults(
   );
 }
 
+function showOverviewError(message) {
+  overviewStatus.textContent =
+    "Failed";
+
+  overviewStatus.className =
+    "panel-status error";
+
+  overviewMessage.textContent =
+    message;
+
+  overviewMessage.className =
+    "panel-message error";
+
+  overviewContent.classList.add(
+    "hidden"
+  );
+}
+
+function showCompetitorError(message) {
+  competitorStatus.textContent =
+    "Failed";
+
+  competitorStatus.className =
+    "panel-status error";
+
+  competitorMessage.textContent =
+    message;
+
+  competitorMessage.className =
+    "panel-message error";
+
+  competitorMap.classList.add(
+    "hidden"
+  );
+
+  anglesMessage.textContent =
+    message;
+
+  anglesMessage.className =
+    "panel-message error";
+
+  questionsMessage.textContent =
+    message;
+
+  questionsMessage.className =
+    "panel-message error";
+}
+
 function showArticleError(message) {
   resultsTitle.textContent =
-    "Search results";
+    "Search Results";
 
   resultsCount.textContent =
     "Failed";
 
   resultsList.replaceChildren();
 
-  statusBox.textContent = message;
+  statusBox.textContent =
+    message;
+
   statusBox.className =
-    "status error";
+    "panel-message error";
+}
+
+function renderList(
+  element,
+  items
+) {
+  element.replaceChildren();
+
+  const safeItems =
+    Array.isArray(items)
+      ? items
+      : [];
+
+  for (const item of safeItems) {
+    const li =
+      document.createElement(
+        "li"
+      );
+
+    li.textContent =
+      item;
+
+    element.appendChild(
+      li
+    );
+  }
+}
+
+function setConfidence(
+  element,
+  level
+) {
+  const safeLevel =
+    level || "unknown";
+
+  element.textContent =
+    `${safeLevel} confidence`;
+
+  element.dataset.level =
+    safeLevel;
+}
+
+function createLabeledText(
+  label,
+  value
+) {
+  const container =
+    document.createElement(
+      "div"
+    );
+
+  container.className =
+    "labeled-content";
+
+  const heading =
+    document.createElement(
+      "strong"
+    );
+
+  heading.textContent =
+    label;
+
+  const body =
+    document.createElement(
+      "p"
+    );
+
+  body.textContent =
+    value || "Not provided.";
+
+  container.append(
+    heading,
+    body
+  );
+
+  return container;
+}
+
+function createLabeledList(
+  label,
+  items
+) {
+  const container =
+    document.createElement(
+      "div"
+    );
+
+  container.className =
+    "labeled-content";
+
+  const heading =
+    document.createElement(
+      "strong"
+    );
+
+  heading.textContent =
+    label;
+
+  const list =
+    document.createElement(
+      "ul"
+    );
+
+  const safeItems =
+    Array.isArray(items)
+      ? items
+      : [];
+
+  for (const item of safeItems) {
+    const li =
+      document.createElement(
+        "li"
+      );
+
+    li.textContent =
+      item;
+
+    list.appendChild(
+      li
+    );
+  }
+
+  container.append(
+    heading,
+    list
+  );
+
+  return container;
+}
+
+function formatLabel(value) {
+  return String(value || "")
+    .replace(
+      /_/g,
+      " "
+    )
+    .replace(
+      /\b\w/g,
+      (character) =>
+        character.toUpperCase()
+    );
 }
