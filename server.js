@@ -14,6 +14,9 @@ const __dirname = path.dirname(__filename);
 app.use(express.json({ limit: "64kb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
+/**
+ * Health check
+ */
 app.get("/api/health", (req, res) => {
   res.json({
     success: true,
@@ -28,8 +31,8 @@ app.get("/api/health", (req, res) => {
 /**
  * Main research endpoint.
  *
- * Apify and OpenAI start at the same time.
- * They do not depend on each other.
+ * Apify and OpenAI run in parallel.
+ * OpenAI only receives the keyword.
  */
 app.post("/api/research", async (req, res) => {
   try {
@@ -97,8 +100,7 @@ app.post("/api/research", async (req, res) => {
 });
 
 /**
- * Keep old endpoint available temporarily.
- * It only returns article search data.
+ * Legacy article-only endpoint.
  */
 app.post("/api/search", async (req, res) => {
   try {
@@ -135,7 +137,7 @@ app.post("/api/search", async (req, res) => {
 });
 
 /**
- * Search and crawl pages with Apify RAG Web Browser.
+ * Search and crawl pages through Apify RAG Web Browser.
  */
 async function searchArticlesWithApify(keyword) {
   if (!APIFY_TOKEN) {
@@ -155,10 +157,10 @@ async function searchArticlesWithApify(keyword) {
     htmlTransformer: "none",
 
     /**
-     * Request more than 10 because social media,
-     * Wikipedia and duplicate domains may be removed.
+     * Request more than 10 because blocked URLs
+     * and duplicate results will be removed.
      */
-    maxResults: 3,
+    maxResults: 20,
 
     outputFormats: [
       "markdown"
@@ -187,6 +189,7 @@ async function searchArticlesWithApify(keyword) {
   };
 
   console.log("Apify keyword:", keyword);
+  console.log("Apify input:", actorInput);
 
   const response = await fetch(apifyEndpoint, {
     method: "POST",
@@ -204,6 +207,10 @@ async function searchArticlesWithApify(keyword) {
   const responseText = await response.text();
 
   console.log("Apify status:", response.status);
+  console.log(
+    "Apify raw response:",
+    responseText.slice(0, 5000)
+  );
 
   if (!response.ok) {
     console.error(
@@ -237,12 +244,12 @@ async function searchArticlesWithApify(keyword) {
     .filter((item) => item.url);
 
   /**
-   * Processing order:
+   * Final processing order:
    *
    * 1. Remove social media and Wikipedia.
    * 2. Remove duplicate URLs.
-   * 3. Sort by original search position.
-   * 4. Select the 10 highest-ranking remaining pages.
+   * 3. Sort by original search rank.
+   * 4. Select the 10 highest-ranking eligible pages.
    * 5. Re-number display position from 1 to 10.
    */
   const filteredItems = removeDuplicateUrls(
@@ -263,10 +270,10 @@ async function searchArticlesWithApify(keyword) {
 }
 
 /**
- * Generate WHO → WHAT → WHY using only the keyword.
+ * Generate AI Overview + WHO + WHAT + WHY.
  *
- * No Apify articles, titles, URLs, snippets or Markdown
- * are sent to OpenAI.
+ * This function only receives the keyword.
+ * It receives no Apify result, URL, title, snippet or article content.
  */
 async function generateKeywordOverview(keyword) {
   if (!OPENAI_API_KEY) {
@@ -279,47 +286,59 @@ async function generateKeywordOverview(keyword) {
     "https://api.openai.com/v1/responses";
 
   const requestBody = {
-    model: "gpt-5",
+    model: "gpt-5-mini",
+
+    store: false,
 
     instructions: `
 You are a senior search-intent strategist for F.Learning Studio.
 
 Analyse only the keyword supplied by the user.
 
-Do not use search results, competitor articles, external research,
-statistics or assumed evidence.
+Do not use web search, competitor articles, external sources,
+statistics, studies or assumed evidence.
 
-The output must always follow this exact sequence:
+Return exactly four sections in this exact order:
 
-1. WHO
-2. WHAT
-3. WHY
+1. OVERVIEW
+2. WHO
+3. WHAT
+4. WHY
+
+OVERVIEW:
+Provide a direct and concise AI answer explaining the topic represented
+by the keyword. State what the topic generally means and the main idea
+a searcher needs to understand first.
 
 WHO:
-Identify the most likely person or group searching the keyword.
-Describe likely role, organisational context, level of knowledge,
-decision-making responsibility and search-journey stage.
+Identify the most likely person or group searching for the keyword.
+Describe their likely role, organisational context, level of knowledge,
+decision-making responsibility and stage in the search journey.
 
 WHAT:
 Explain what the searcher is most likely trying to find, understand,
-compare, evaluate or accomplish through the search.
+compare, evaluate, select or accomplish through the search.
 
 WHY:
-Explain the underlying reason or trigger behind the search, such as
-a problem, business pressure, risk, desired outcome or upcoming decision.
+Explain the likely motivation or trigger behind the search, such as a
+problem, business pressure, risk, desired outcome or upcoming decision.
 
-Important rules:
+Rules:
 
-- WHO must describe the searcher.
-- WHAT must describe the object of the search.
-- WHY must describe the motivation behind the search.
-- Do not merge WHAT and WHY.
-- Distinguish likely inference from certainty.
-- Do not fabricate facts, statistics or evidence.
-- When the keyword is ambiguous, mention the most likely interpretation
-  and briefly acknowledge the alternative interpretation.
+- Use only the supplied keyword.
+- Do not claim that web research has been performed.
+- Do not mention competitor articles or search results.
+- Do not fabricate facts, numbers, statistics, studies or evidence.
+- OVERVIEW explains the topic itself.
+- WHO describes the searcher.
+- WHAT describes what the searcher wants.
+- WHY describes the motivation behind the search.
+- Keep WHAT and WHY clearly separate.
+- When the keyword is ambiguous, use the most likely interpretation and
+  briefly acknowledge the ambiguity in OVERVIEW.
+- Express uncertainty through the confidence fields.
 - Write in clear professional English.
-- Keep each section concise but useful.
+- Keep every section concise, useful and specific.
 `,
 
     input: [
@@ -339,8 +358,7 @@ Important rules:
         type: "json_schema",
         name: "keyword_search_intent",
         description:
-          "Keyword-only WHO, WHAT and WHY analysis.",
-
+          "Keyword-only AI Overview and WHO, WHAT, WHY search-intent analysis.",
         strict: true,
 
         schema: {
@@ -348,6 +366,42 @@ Important rules:
           additionalProperties: false,
 
           properties: {
+            overview: {
+              type: "object",
+              additionalProperties: false,
+
+              properties: {
+                answer: {
+                  type: "string"
+                },
+
+                keyPoints: {
+                  type: "array",
+                  minItems: 2,
+                  maxItems: 4,
+
+                  items: {
+                    type: "string"
+                  }
+                },
+
+                confidence: {
+                  type: "string",
+                  enum: [
+                    "high",
+                    "medium",
+                    "low"
+                  ]
+                }
+              },
+
+              required: [
+                "answer",
+                "keyPoints",
+                "confidence"
+              ]
+            },
+
             who: {
               type: "object",
               additionalProperties: false,
@@ -458,6 +512,7 @@ Important rules:
           },
 
           required: [
+            "overview",
             "who",
             "what",
             "why"
@@ -485,6 +540,10 @@ Important rules:
   const responseText = await response.text();
 
   console.log("OpenAI status:", response.status);
+  console.log(
+    "OpenAI raw response:",
+    responseText.slice(0, 5000)
+  );
 
   if (!response.ok) {
     console.error(
@@ -492,9 +551,22 @@ Important rules:
       responseText.slice(0, 2000)
     );
 
-    throw new Error(
-      `OpenAI request failed with status ${response.status}`
-    );
+    let openAIErrorMessage =
+      `OpenAI request failed with status ${response.status}`;
+
+    try {
+      const errorData =
+        JSON.parse(responseText);
+
+      if (errorData?.error?.message) {
+        openAIErrorMessage =
+          errorData.error.message;
+      }
+    } catch {
+      // Keep fallback error message.
+    }
+
+    throw new Error(openAIErrorMessage);
   }
 
   let data;
@@ -507,7 +579,22 @@ Important rules:
     );
   }
 
-  const outputText = extractOpenAIOutputText(data);
+  if (data?.status === "incomplete") {
+    throw new Error(
+      data?.incomplete_details?.reason ||
+      "OpenAI response was incomplete"
+    );
+  }
+
+  if (data?.status === "failed") {
+    throw new Error(
+      data?.error?.message ||
+      "OpenAI response failed"
+    );
+  }
+
+  const outputText =
+    extractOpenAIOutputText(data);
 
   if (!outputText) {
     throw new Error(
@@ -529,9 +616,15 @@ Important rules:
   }
 }
 
+/**
+ * Extract text generated by the Responses API.
+ */
 function extractOpenAIOutputText(response) {
-  if (typeof response?.output_text === "string") {
-    return response.output_text;
+  if (
+    typeof response?.output_text === "string" &&
+    response.output_text.trim()
+  ) {
+    return response.output_text.trim();
   }
 
   if (!Array.isArray(response?.output)) {
@@ -548,7 +641,16 @@ function extractOpenAIOutputText(response) {
         contentItem?.type === "output_text" &&
         typeof contentItem?.text === "string"
       ) {
-        return contentItem.text;
+        return contentItem.text.trim();
+      }
+
+      if (
+        contentItem?.type === "refusal" &&
+        typeof contentItem?.refusal === "string"
+      ) {
+        throw new Error(
+          `OpenAI refused the request: ${contentItem.refusal}`
+        );
       }
     }
   }
@@ -556,6 +658,9 @@ function extractOpenAIOutputText(response) {
   return "";
 }
 
+/**
+ * Normalize one Apify RAG Web Browser result.
+ */
 function normalizeRagResult(item, index) {
   const url =
     item?.url ||
@@ -608,6 +713,9 @@ function normalizeRagResult(item, index) {
   };
 }
 
+/**
+ * Remove duplicate URLs.
+ */
 function removeDuplicateUrls(items) {
   const seen = new Set();
 
@@ -615,7 +723,10 @@ function removeDuplicateUrls(items) {
     const normalizedUrl =
       normalizeUrlForComparison(item.url);
 
-    if (!normalizedUrl || seen.has(normalizedUrl)) {
+    if (
+      !normalizedUrl ||
+      seen.has(normalizedUrl)
+    ) {
       return false;
     }
 
@@ -624,6 +735,9 @@ function removeDuplicateUrls(items) {
   });
 }
 
+/**
+ * Normalize URL before duplicate comparison.
+ */
 function normalizeUrlForComparison(url) {
   try {
     const parsedUrl = new URL(url);
@@ -642,12 +756,23 @@ function normalizeUrlForComparison(url) {
       parsedUrl.searchParams.delete(parameter);
     });
 
+    if (
+      parsedUrl.pathname.length > 1 &&
+      parsedUrl.pathname.endsWith("/")
+    ) {
+      parsedUrl.pathname =
+        parsedUrl.pathname.slice(0, -1);
+    }
+
     return parsedUrl.toString();
   } catch {
     return "";
   }
 }
 
+/**
+ * Remove social media and Wikipedia-related URLs.
+ */
 function isBlockedUrl(url) {
   try {
     const hostname = new URL(url)
@@ -685,6 +810,9 @@ function isBlockedUrl(url) {
   }
 }
 
+/**
+ * Create a short description from Markdown.
+ */
 function createSnippet(markdown) {
   if (!markdown) {
     return "";
@@ -717,6 +845,9 @@ function cleanKeyword(value) {
     .slice(0, 250);
 }
 
+/**
+ * Serve frontend for all non-API routes.
+ */
 app.get("*", (req, res) => {
   res.sendFile(
     path.join(__dirname, "public", "index.html")
@@ -724,5 +855,7 @@ app.get("*", (req, res) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(
+    `Server running on port ${PORT}`
+  );
 });
