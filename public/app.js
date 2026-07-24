@@ -45,70 +45,146 @@ searchForm.addEventListener(
         "Please enter a keyword."
       );
 
+      showOverviewError(
+        "Please enter a keyword."
+      );
+
       return;
     }
 
     startLoading(keyword);
 
-    try {
-      const response =
-        await fetch("/api/research", {
-          method: "POST",
+    /**
+     * Start both requests at the same time.
+     *
+     * Each request updates its own UI independently.
+     */
+    const articleRequest =
+      requestArticles(keyword);
 
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
+    const overviewRequest =
+      requestOverview(keyword);
 
-          body: JSON.stringify({
-            keyword
-          })
-        });
+    await Promise.allSettled([
+      articleRequest,
+      overviewRequest
+    ]);
 
-      let data;
-
-      try {
-        data = await response.json();
-      } catch {
-        throw new Error(
-          "Server returned invalid JSON."
-        );
-      }
-
-      if (!response.ok) {
-        throw new Error(
-          data.error ||
-          "Research request failed."
-        );
-      }
-
-      renderResearch(data);
-    } catch (error) {
-      console.error(
-        "Research frontend error:",
-        error
-      );
-
-      showArticleError(
-        error?.message ||
-        "Research request failed."
-      );
-
-      showOverviewError(
-        error?.message ||
-        "AI Overview failed."
-      );
-    } finally {
-      stopLoading();
-    }
+    stopLoading();
   }
 );
+
+/**
+ * OpenAI request.
+ *
+ * This does not wait for Apify.
+ */
+async function requestOverview(keyword) {
+  try {
+    const response =
+      await fetch("/api/overview", {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body: JSON.stringify({
+          keyword
+        })
+      });
+
+    const data =
+      await readJsonResponse(response);
+
+    if (!response.ok || !data.success) {
+      throw new Error(
+        data.error ||
+        "AI Overview could not be generated."
+      );
+    }
+
+    renderOverview(data.data);
+  } catch (error) {
+    console.error(
+      "Overview frontend error:",
+      error
+    );
+
+    showOverviewError(
+      error?.message ||
+      "AI Overview could not be generated."
+    );
+  }
+}
+
+/**
+ * Apify request.
+ *
+ * This does not wait for OpenAI.
+ */
+async function requestArticles(keyword) {
+  try {
+    const response =
+      await fetch("/api/search", {
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body: JSON.stringify({
+          keyword
+        })
+      });
+
+    const data =
+      await readJsonResponse(response);
+
+    if (!response.ok || !data.success) {
+      throw new Error(
+        data.error ||
+        "Article search failed."
+      );
+    }
+
+    renderResults(
+      keyword,
+      data.results
+    );
+  } catch (error) {
+    console.error(
+      "Article frontend error:",
+      error
+    );
+
+    showArticleError(
+      error?.message ||
+      "Articles could not be collected."
+    );
+  }
+}
+
+async function readJsonResponse(response) {
+  try {
+    return await response.json();
+  } catch {
+    throw new Error(
+      "Server returned invalid JSON."
+    );
+  }
+}
 
 function startLoading(keyword) {
   searchButton.disabled = true;
   searchButton.textContent =
     "Running research...";
 
+  /*
+   * Article loading state
+   */
   resultsTitle.textContent =
     `Searching for “${keyword}”`;
 
@@ -123,6 +199,9 @@ function startLoading(keyword) {
   statusBox.className =
     "status";
 
+  /*
+   * OpenAI loading state
+   */
   overviewStatus.textContent =
     "Generating";
 
@@ -130,7 +209,7 @@ function startLoading(keyword) {
     "overview-status loading";
 
   overviewMessage.textContent =
-    "OpenAI is analysing the keyword independently.";
+    "OpenAI is analysing the keyword.";
 
   overviewMessage.className =
     "overview-message";
@@ -146,58 +225,94 @@ function stopLoading() {
     "Run research search";
 }
 
-function renderResearch(data) {
-  if (data.overview?.success) {
-    renderOverview(
-      data.overview.data
-    );
-  } else {
+function renderOverview(overview) {
+  if (!overview) {
     showOverviewError(
-      data.overview?.error ||
-      "AI Overview could not be generated."
+      "OpenAI returned no overview data."
+    );
+
+    return;
+  }
+
+  renderAiOverview(
+    overview.overview
+  );
+
+  const sequence = [
+    {
+      key: "who",
+      data: overview.who
+    },
+    {
+      key: "what",
+      data: overview.what
+    },
+    {
+      key: "why",
+      data: overview.why
+    }
+  ];
+
+  for (const section of sequence) {
+    renderIntentSection(
+      section.key,
+      section.data
     );
   }
 
-  if (data.articles?.success) {
-    renderResults(
-      data.keyword,
-      data.articles.results
-    );
-  } else {
-    showArticleError(
-      data.articles?.error ||
-      "Articles could not be collected."
-    );
-  }
+  overviewStatus.textContent =
+    "Generated";
+
+  overviewStatus.className =
+    "overview-status success";
+
+  overviewMessage.classList.add(
+    "hidden"
+  );
+
+  overviewContent.classList.remove(
+    "hidden"
+  );
 }
 
-function renderOverview(overview) {
-  const overviewData =
-    overview?.overview || {};
+function renderAiOverview(data) {
+  const overviewData = data || {};
 
-  const overviewAnswer =
+  const answerElement =
     document.querySelector(
       "#ai-overview-answer"
     );
 
-  const overviewPoints =
+  const pointsElement =
     document.querySelector(
       "#ai-overview-points"
     );
 
-  const overviewConfidence =
+  const confidenceElement =
     document.querySelector(
       "#ai-overview-confidence"
     );
 
-  overviewAnswer.textContent =
+  if (
+    !answerElement ||
+    !pointsElement ||
+    !confidenceElement
+  ) {
+    throw new Error(
+      "AI Overview elements are missing from index.html."
+    );
+  }
+
+  answerElement.textContent =
     overviewData.answer ||
     "No overview generated.";
 
-  overviewPoints.replaceChildren();
+  pointsElement.replaceChildren();
 
   const keyPoints =
-    Array.isArray(overviewData.keyPoints)
+    Array.isArray(
+      overviewData.keyPoints
+    )
       ? overviewData.keyPoints
       : [];
 
@@ -207,31 +322,89 @@ function renderOverview(overview) {
 
     listItem.textContent = point;
 
-    overviewPoints.appendChild(listItem);
+    pointsElement.appendChild(
+      listItem
+    );
   }
 
-  overviewConfidence.textContent =
-    `${overviewData.confidence || "unknown"} confidence`;
+  setConfidence(
+    confidenceElement,
+    overviewData.confidence
+  );
+}
 
-  overviewConfidence.dataset.level =
-    overviewData.confidence || "unknown";
+function renderIntentSection(
+  key,
+  sectionData
+) {
+  const safeData =
+    sectionData || {};
 
-  const sequence = [
-    {
-      key: "who",
-      data: overview?.who
-    },
-    {
-      key: "what",
-      data: overview?.what
-    },
-    {
-      key: "why",
-      data: overview?.why
-    }
-  ];
+  const summaryElement =
+    document.querySelector(
+      `#${key}-summary`
+    );
 
-  // Giữ nguyên phần code còn lại của hàm.
+  const detailsElement =
+    document.querySelector(
+      `#${key}-details`
+    );
+
+  const confidenceElement =
+    document.querySelector(
+      `#${key}-confidence`
+    );
+
+  if (
+    !summaryElement ||
+    !detailsElement ||
+    !confidenceElement
+  ) {
+    throw new Error(
+      `Missing HTML elements for ${key.toUpperCase()}.`
+    );
+  }
+
+  summaryElement.textContent =
+    safeData.summary ||
+    "No summary generated.";
+
+  detailsElement.replaceChildren();
+
+  const details =
+    Array.isArray(safeData.details)
+      ? safeData.details
+      : [];
+
+  for (const detail of details) {
+    const listItem =
+      document.createElement("li");
+
+    listItem.textContent = detail;
+
+    detailsElement.appendChild(
+      listItem
+    );
+  }
+
+  setConfidence(
+    confidenceElement,
+    safeData.confidence
+  );
+}
+
+function setConfidence(
+  element,
+  confidence
+) {
+  const level =
+    confidence || "unknown";
+
+  element.textContent =
+    `${level} confidence`;
+
+  element.dataset.level =
+    level;
 }
 
 function showOverviewError(message) {
@@ -241,7 +414,8 @@ function showOverviewError(message) {
   overviewStatus.className =
     "overview-status error";
 
-  overviewMessage.textContent = message;
+  overviewMessage.textContent =
+    message;
 
   overviewMessage.className =
     "overview-message error";
@@ -251,7 +425,10 @@ function showOverviewError(message) {
   );
 }
 
-function renderResults(keyword, results) {
+function renderResults(
+  keyword,
+  results
+) {
   const safeResults =
     Array.isArray(results)
       ? results
@@ -328,7 +505,9 @@ function renderResults(keyword, results) {
     }
   );
 
-  resultsList.appendChild(fragment);
+  resultsList.appendChild(
+    fragment
+  );
 }
 
 function showArticleError(message) {
