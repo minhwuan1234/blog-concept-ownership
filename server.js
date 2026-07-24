@@ -13,9 +13,6 @@ const __dirname = path.dirname(__filename);
 app.use(express.json({ limit: "32kb" }));
 app.use(express.static(path.join(__dirname, "public")));
 
-/**
- * Health check
- */
 app.get("/api/health", (req, res) => {
   res.json({
     success: true,
@@ -23,18 +20,9 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-/**
- * Google search through Apify
- */
 app.post("/api/search", async (req, res) => {
   try {
     const keyword = String(req.body?.keyword || "").trim();
-
-    const languageCode = String(
-      req.body?.languageCode || "en"
-    )
-      .trim()
-      .toLowerCase();
 
     if (!keyword) {
       return res.status(400).json({
@@ -52,79 +40,44 @@ app.post("/api/search", async (req, res) => {
       });
     }
 
-    /**
-     * New official Apify Actor endpoint
-     *
-     * Do not put the token directly in this URL.
-     * The token is sent through the Authorization header below.
-     */
     const apifyEndpoint =
       "https://api.apify.com/v2/actors/" +
-      "apify~google-search-scraper/" +
+      "apify~rag-web-browser/" +
       "run-sync-get-dataset-items";
 
-    /**
-     * New Actor input
-     *
-     * The keyword entered in the UI replaces the value of queries.
-     */
     const actorInput = {
-      aiOverview: {
-        scrapeFullAiOverview: false
+      debugMode: false,
+      desiredConcurrency: 5,
+      htmlTransformer: "none",
+      maxResults: 20,
+
+      outputFormats: [
+        "markdown"
+      ],
+
+      proxyConfiguration: {
+        useApifyProxy: true
       },
 
-      chatGptSearch: {
-        enableChatGpt: false
-      },
+      // Keyword động lấy từ ô input trên UI
+      query: keyword,
 
-      copilotSearch: {
-        enableCopilot: false
-      },
+      removeCookieWarnings: true,
 
-      focusOnPaidAds: false,
-      forceExactMatch: false,
+      removeElementsCssSelector:
+        "nav, footer, script, style, noscript, svg, img[src^='data:'],\n" +
+        '[role="alert"],\n' +
+        '[role="banner"],\n' +
+        '[role="dialog"],\n' +
+        '[role="alertdialog"],\n' +
+        '[role="region"][aria-label*="skip" i],\n' +
+        '[aria-modal="true"]',
 
-      geminiSearch: {
-        enableGemini: true
-      },
-
-      includeIcons: false,
-      includeUnfilteredResults: false,
-
-      /**
-       * We only need the first Google page for the top 10 competitors.
-       * Setting this to 10 would scrape up to 10 pages and cost more.
-       */
-      maxPagesPerQuery: 1,
-
-      maximumLeadsEnrichmentRecords: 0,
-      mobileResults: false,
-
-      perplexitySearch: {
-        enablePerplexity: false,
-        returnImages: false,
-        returnRelatedQuestions: false
-      },
-
-      /**
-       * Dynamic keyword from the UI.
-       *
-       * Example:
-       * User enters "learning & development"
-       * queries becomes "learning & development"
-       */
-      queries: keyword,
-
-      saveHtml: false,
-      saveHtmlToKeyValueStore: true,
-
-      searchLanguage: languageCode,
-
-      verifyLeadsEnrichmentEmails: false
+      requestTimeoutSecs: 40,
+      scrapingTool: "raw-http"
     };
 
     console.log("Searching keyword:", keyword);
-    console.log("Apify endpoint:", apifyEndpoint);
     console.log("Apify input:", actorInput);
 
     const apifyResponse = await fetch(apifyEndpoint, {
@@ -137,7 +90,7 @@ app.post("/api/search", async (req, res) => {
 
       body: JSON.stringify(actorInput),
 
-      signal: AbortSignal.timeout(180000)
+      signal: AbortSignal.timeout(240000)
     });
 
     const responseText = await apifyResponse.text();
@@ -169,74 +122,30 @@ app.post("/api/search", async (req, res) => {
       });
     }
 
-    /**
-     * Official Google Search Scraper normally returns an array.
-     * Each item represents one Google results page.
-     *
-     * Organic results are commonly inside:
-     * page.organicResults
-     */
-    const pages = Array.isArray(apifyData)
+    const rawItems = Array.isArray(apifyData)
       ? apifyData
       : [apifyData];
 
-    const rawOrganicResults = pages.flatMap((page) => {
-      if (Array.isArray(page?.organicResults)) {
-        return page.organicResults;
-      }
+    const normalizedItems = rawItems
+      .map((item, index) => normalizeRagResult(item, index))
+      .filter((item) => item.url);
 
-      if (Array.isArray(page?.organic_results)) {
-        return page.organic_results;
-      }
-
-      return [];
-    });
-
-    const results = normalizeResults(rawOrganicResults).slice(0, 10);
-
-    /**
-     * Keep additional data for later research stages.
-     */
-    const aiOverviews = pages
-      .map((page) => {
-        return (
-          page?.aiOverview ||
-          page?.ai_overview ||
-          null
-        );
-      })
-      .filter(Boolean);
-
-    const peopleAlsoAsk = pages.flatMap((page) => {
-      if (Array.isArray(page?.peopleAlsoAsk)) {
-        return page.peopleAlsoAsk;
-      }
-
-      if (Array.isArray(page?.people_also_ask)) {
-        return page.people_also_ask;
-      }
-
-      return [];
-    });
+    const filteredItems = normalizedItems
+      .filter((item) => !isBlockedUrl(item.url))
+      .slice(0, 10);
 
     return res.json({
       success: true,
-
       keyword,
-
-      count: results.length,
-
-      results,
-
-      aiOverview: aiOverviews[0] || null,
-
-      peopleAlsoAsk,
+      count: filteredItems.length,
+      results: filteredItems,
 
       debug: {
-        pageCount: pages.length,
-        rawOrganicCount: rawOrganicResults.length,
-        hasAiOverview: aiOverviews.length > 0,
-        peopleAlsoAskCount: peopleAlsoAsk.length
+        rawResultCount: rawItems.length,
+        normalizedCount: normalizedItems.length,
+        blockedCount:
+          normalizedItems.length - filteredItems.length,
+        returnedCount: filteredItems.length
       }
     });
   } catch (error) {
@@ -258,69 +167,120 @@ app.post("/api/search", async (req, res) => {
   }
 });
 
-/**
- * Convert Apify organic results into the structure expected by app.js.
- */
-function normalizeResults(items) {
-  const seenUrls = new Set();
+function normalizeRagResult(item, index) {
+  const url =
+    item?.url ||
+    item?.pageUrl ||
+    item?.page_url ||
+    item?.loadedUrl ||
+    item?.loaded_url ||
+    item?.requestUrl ||
+    item?.request_url ||
+    item?.metadata?.url ||
+    "";
 
-  return items
-    .map((item, index) => {
-      const url =
-        item?.url ||
-        item?.link ||
-        "";
+  const title =
+    item?.title ||
+    item?.pageTitle ||
+    item?.page_title ||
+    item?.metadata?.title ||
+    getDomain(url) ||
+    "Untitled article";
 
-      return {
-        position: Number(
-          item?.position ||
-          item?.rank ||
-          index + 1
-        ),
+  const markdown =
+    item?.markdown ||
+    item?.content ||
+    item?.text ||
+    "";
 
-        title:
-          item?.title ||
-          item?.headline ||
-          "Untitled article",
+  const description =
+    item?.description ||
+    item?.snippet ||
+    item?.metadata?.description ||
+    createSnippet(markdown);
 
-        url,
+  return {
+    position: index + 1,
+    title,
+    url,
+    description,
+    domain: getDomain(url),
 
-        description:
-          item?.description ||
-          item?.snippet ||
-          item?.text ||
-          "",
+    // Giữ lại để dùng ở bước phân tích article sau
+    markdown
+  };
+}
 
-        domain: getDomain(url)
-      };
-    })
-    .filter((item) => {
-      if (!item.url) {
-        return false;
-      }
+function isBlockedUrl(url) {
+  try {
+    const hostname = new URL(url)
+      .hostname
+      .toLowerCase()
+      .replace(/^www\./, "");
 
-      if (seenUrls.has(item.url)) {
-        return false;
-      }
+    const blockedDomains = [
+      // Social media
+      "facebook.com",
+      "m.facebook.com",
+      "instagram.com",
+      "linkedin.com",
+      "twitter.com",
+      "x.com",
+      "tiktok.com",
+      "youtube.com",
+      "youtu.be",
+      "pinterest.com",
+      "reddit.com",
+      "threads.net",
+      "snapchat.com",
+      "quora.com",
 
-      seenUrls.add(item.url);
+      // Wikipedia / Wikimedia
+      "wikipedia.org",
+      "en.wikipedia.org",
+      "de.wikipedia.org",
+      "vi.wikipedia.org",
+      "wikimedia.org",
+      "commons.wikimedia.org",
+      "wikidata.org"
+    ];
 
-      return true;
-    })
-    .sort((a, b) => a.position - b.position);
+    return blockedDomains.some((domain) => {
+      return (
+        hostname === domain ||
+        hostname.endsWith(`.${domain}`)
+      );
+    });
+  } catch {
+    return true;
+  }
+}
+
+function createSnippet(markdown) {
+  if (!markdown) {
+    return "";
+  }
+
+  return markdown
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/[#>*_`~-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 280);
 }
 
 function getDomain(url) {
   try {
-    return new URL(url).hostname.replace(/^www\./, "");
+    return new URL(url)
+      .hostname
+      .replace(/^www\./, "");
   } catch {
     return "";
   }
 }
 
-/**
- * Frontend fallback
- */
 app.get("*", (req, res) => {
   res.sendFile(
     path.join(__dirname, "public", "index.html")
