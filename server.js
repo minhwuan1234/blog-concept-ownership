@@ -7,6 +7,14 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const APIFY_TOKEN = process.env.APIFY_TOKEN;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const PAST_CONTENT_EXAMPLES_URL =
+  process.env.PAST_CONTENT_EXAMPLES_URL || "";
+
+const TEAM_VOICE_GUIDE_URL =
+  process.env.TEAM_VOICE_GUIDE_URL || "";
+
+const COMPANY_POSITIONING_URL =
+  process.env.COMPANY_POSITIONING_URL || "";
 
 /**
  * Optional default context stored in Railway.
@@ -58,6 +66,39 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+/**
+ * Research reference files.
+ *
+ * At this stage, the application only exposes links.
+ * It does not read or process the files.
+ */
+app.get("/api/research-resources", (req, res) => {
+  const resources = [
+    {
+      id: "past_content_examples",
+      name: "Past content examples",
+      url: PAST_CONTENT_EXAMPLES_URL,
+      configured: Boolean(PAST_CONTENT_EXAMPLES_URL)
+    },
+    {
+      id: "team_voice_guide",
+      name: "Team voice guide",
+      url: TEAM_VOICE_GUIDE_URL,
+      configured: Boolean(TEAM_VOICE_GUIDE_URL)
+    },
+    {
+      id: "company_positioning",
+      name: "Company Positioning",
+      url: COMPANY_POSITIONING_URL,
+      configured: Boolean(COMPANY_POSITIONING_URL)
+    }
+  ];
+
+  return res.json({
+    success: true,
+    resources
+  });
+});
 /**
  * Keyword-only overview.
  *
