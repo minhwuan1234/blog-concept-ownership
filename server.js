@@ -45,13 +45,14 @@ app.post("/api/search", async (req, res) => {
       "scraperlink~google-search-results-serp-scraper/" +
       "run-sync-get-dataset-items";
 
-    const actorInput = {
-  keyword,
+const actorInput = {
   country: "US",
-  limit: 10,
-  page: 1
+  include_merged: true,
+  keyword,
+  limit: "10",
+  lr: "lang_en",
+  start: 1
 };
-
     console.log("Searching keyword:", keyword);
     console.log("Apify input:", actorInput);
 
