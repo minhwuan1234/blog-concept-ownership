@@ -46,13 +46,11 @@ app.post("/api/search", async (req, res) => {
       "run-sync-get-dataset-items";
 
     const actorInput = {
-      country: "US",
-      include_merged: true,
-      keyword,
-      limit: "10",
-      lr: "lang_en",
-      start: 1
-    };
+  keyword,
+  country: "US",
+  limit: 10,
+  page: 1
+};
 
     console.log("Searching keyword:", keyword);
     console.log("Apify input:", actorInput);
