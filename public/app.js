@@ -8,6 +8,28 @@ const searchButton =
     "#search-button"
   );
 
+const resourcesStatus =
+  document.querySelector(
+    "#resources-status"
+  );
+
+const resourceElements = {
+  past_content_examples:
+    document.querySelector(
+      "#resource-past-content"
+    ),
+
+  team_voice_guide:
+    document.querySelector(
+      "#resource-team-voice"
+    ),
+
+  company_positioning:
+    document.querySelector(
+      "#resource-company-positioning"
+    )
+};
+
 const overviewStatus =
   document.querySelector(
     "#overview-status"
@@ -1358,4 +1380,160 @@ function formatLabel(value) {
       (character) =>
         character.toUpperCase()
     );
+}
+async function loadResearchResources() {
+  setResourcesStatus(
+    "Loading",
+    "loading"
+  );
+
+ Object.values(
+  resourceElements
+).forEach((element) => {
+  element?.addEventListener(
+    "click",
+    (event) => {
+      if (
+        element.getAttribute(
+          "aria-disabled"
+        ) === "true"
+      ) {
+        event.preventDefault();
+      }
+    }
+  );
+});
+  
+  try {
+    const response =
+      await fetch(
+        "/api/research-resources"
+      );
+
+    const data =
+      await readJsonResponse(
+        response
+      );
+
+    if (
+      !response.ok ||
+      !data.success
+    ) {
+      throw new Error(
+        data.error ||
+        "Research resources could not be loaded."
+      );
+    }
+
+    const resources =
+      Array.isArray(data.resources)
+        ? data.resources
+        : [];
+
+    let connectedCount = 0;
+
+    for (const resource of resources) {
+      const element =
+        resourceElements[
+          resource.id
+        ];
+
+      if (!element) {
+        continue;
+      }
+
+      updateResourceLink(
+        element,
+        resource
+      );
+
+      if (resource.configured) {
+        connectedCount += 1;
+      }
+    }
+
+    setResourcesStatus(
+      `${connectedCount}/3 connected`,
+      connectedCount === 3
+        ? "success"
+        : "partial"
+    );
+  } catch (error) {
+    console.error(
+      "Research resources error:",
+      error
+    );
+
+    setResourcesStatus(
+      "Unavailable",
+      "error"
+    );
+  }
+}
+
+function updateResourceLink(
+  element,
+  resource
+) {
+  const statusText =
+    element.querySelector(
+      ".resource-info span"
+    );
+
+  element.classList.remove(
+    "is-loading",
+    "is-connected",
+    "is-missing"
+  );
+
+  if (
+    resource.configured &&
+    resource.url
+  ) {
+    element.href =
+      resource.url;
+
+    element.classList.add(
+      "is-connected"
+    );
+
+    element.setAttribute(
+      "aria-disabled",
+      "false"
+    );
+
+    statusText.textContent =
+      "Open Supabase file";
+
+    return;
+  }
+
+  element.href = "#";
+
+  element.classList.add(
+    "is-missing"
+  );
+
+  element.setAttribute(
+    "aria-disabled",
+    "true"
+  );
+
+  statusText.textContent =
+    "Not connected";
+}
+
+function setResourcesStatus(
+  text,
+  state
+) {
+  if (!resourcesStatus) {
+    return;
+  }
+
+  resourcesStatus.textContent =
+    text;
+
+  resourcesStatus.className =
+    `resources-status ${state}`;
 }
