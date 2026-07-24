@@ -330,244 +330,211 @@ async function generateKeywordOverview(keyword) {
   const openAIEndpoint =
     "https://api.openai.com/v1/responses";
 
+  const schema = {
+    type: "object",
+    additionalProperties: false,
+
+    properties: {
+      overview: {
+        type: "object",
+        additionalProperties: false,
+
+        properties: {
+          answer: {
+            type: "string"
+          },
+
+          keyPoints: {
+            type: "array",
+            items: {
+              type: "string"
+            }
+          },
+
+          confidence: {
+            type: "string",
+            enum: ["high", "medium", "low"]
+          }
+        },
+
+        required: [
+          "answer",
+          "keyPoints",
+          "confidence"
+        ]
+      },
+
+      who: {
+        type: "object",
+        additionalProperties: false,
+
+        properties: {
+          summary: {
+            type: "string"
+          },
+
+          details: {
+            type: "array",
+            items: {
+              type: "string"
+            }
+          },
+
+          confidence: {
+            type: "string",
+            enum: ["high", "medium", "low"]
+          }
+        },
+
+        required: [
+          "summary",
+          "details",
+          "confidence"
+        ]
+      },
+
+      what: {
+        type: "object",
+        additionalProperties: false,
+
+        properties: {
+          summary: {
+            type: "string"
+          },
+
+          details: {
+            type: "array",
+            items: {
+              type: "string"
+            }
+          },
+
+          confidence: {
+            type: "string",
+            enum: ["high", "medium", "low"]
+          }
+        },
+
+        required: [
+          "summary",
+          "details",
+          "confidence"
+        ]
+      },
+
+      why: {
+        type: "object",
+        additionalProperties: false,
+
+        properties: {
+          summary: {
+            type: "string"
+          },
+
+          details: {
+            type: "array",
+            items: {
+              type: "string"
+            }
+          },
+
+          confidence: {
+            type: "string",
+            enum: ["high", "medium", "low"]
+          }
+        },
+
+        required: [
+          "summary",
+          "details",
+          "confidence"
+        ]
+      }
+    },
+
+    required: [
+      "overview",
+      "who",
+      "what",
+      "why"
+    ]
+  };
+
   const requestBody = {
-    model: "gpt-5-mini",
+    /*
+     * Use a broadly available model for the first working version.
+     * We can change this back to gpt-5-mini after confirming the API flow.
+     */
+    model: "gpt-4.1-mini",
 
     store: false,
+
+    max_output_tokens: 1600,
 
     instructions: `
 You are a senior search-intent strategist for F.Learning Studio.
 
 Analyse only the keyword supplied by the user.
 
-Do not use web search, competitor articles, external sources,
-statistics, studies or assumed evidence.
+Do not browse the web.
+Do not use competitor articles.
+Do not claim to have researched external sources.
+Do not invent statistics, studies or factual evidence.
 
-Return exactly four sections in this exact order:
+Return exactly four sections:
 
-1. OVERVIEW
-2. WHO
-3. WHAT
-4. WHY
+1. overview
+2. who
+3. what
+4. why
 
 OVERVIEW:
-Provide a direct and concise AI answer explaining the topic represented
-by the keyword. State what the topic generally means and the main idea
-a searcher needs to understand first.
+Give a direct explanation of the topic represented by the keyword.
+Explain what it generally means and the central idea a searcher should
+understand first.
 
 WHO:
 Identify the most likely person or group searching for the keyword.
-Describe their likely role, organisational context, level of knowledge,
-decision-making responsibility and stage in the search journey.
+Describe their likely role, context, knowledge level and decision-making
+responsibility.
 
 WHAT:
-Explain what the searcher is most likely trying to find, understand,
-compare, evaluate, select or accomplish through the search.
+Explain what the searcher is likely trying to find, understand, compare,
+evaluate, select or accomplish.
 
 WHY:
-Explain the likely motivation or trigger behind the search, such as a
-problem, business pressure, risk, desired outcome or upcoming decision.
+Explain the likely motivation behind the search, such as a problem,
+pressure, risk, desired outcome or upcoming decision.
 
-Rules:
+Keep WHO, WHAT and WHY clearly separate.
 
-- Use only the supplied keyword.
-- Do not claim that web research has been performed.
-- Do not mention competitor articles or search results.
-- Do not fabricate facts, numbers, statistics, studies or evidence.
-- OVERVIEW explains the topic itself.
-- WHO describes the searcher.
-- WHAT describes what the searcher wants.
-- WHY describes the motivation behind the search.
-- Keep WHAT and WHY clearly separate.
-- When the keyword is ambiguous, use the most likely interpretation and
-  briefly acknowledge the ambiguity in OVERVIEW.
-- Express uncertainty through the confidence fields.
-- Write in clear professional English.
-- Keep every section concise, useful and specific.
+For overview.keyPoints, return between 2 and 4 items.
+For who.details, what.details and why.details, return between 2 and 4 items.
+
+Write in clear professional English.
 `,
 
-    input: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "input_text",
-            text: `Keyword: ${keyword}`
-          }
-        ]
-      }
-    ],
+    input: `Keyword: ${keyword}`,
 
     text: {
       format: {
         type: "json_schema",
         name: "keyword_search_intent",
-        description:
-          "Keyword-only AI Overview and WHO, WHAT, WHY search-intent analysis.",
         strict: true,
-
-        schema: {
-          type: "object",
-          additionalProperties: false,
-
-          properties: {
-            overview: {
-              type: "object",
-              additionalProperties: false,
-
-              properties: {
-                answer: {
-                  type: "string"
-                },
-
-                keyPoints: {
-                  type: "array",
-                  minItems: 2,
-                  maxItems: 4,
-
-                  items: {
-                    type: "string"
-                  }
-                },
-
-                confidence: {
-                  type: "string",
-                  enum: [
-                    "high",
-                    "medium",
-                    "low"
-                  ]
-                }
-              },
-
-              required: [
-                "answer",
-                "keyPoints",
-                "confidence"
-              ]
-            },
-
-            who: {
-              type: "object",
-              additionalProperties: false,
-
-              properties: {
-                summary: {
-                  type: "string"
-                },
-
-                details: {
-                  type: "array",
-                  minItems: 2,
-                  maxItems: 4,
-
-                  items: {
-                    type: "string"
-                  }
-                },
-
-                confidence: {
-                  type: "string",
-                  enum: [
-                    "high",
-                    "medium",
-                    "low"
-                  ]
-                }
-              },
-
-              required: [
-                "summary",
-                "details",
-                "confidence"
-              ]
-            },
-
-            what: {
-              type: "object",
-              additionalProperties: false,
-
-              properties: {
-                summary: {
-                  type: "string"
-                },
-
-                details: {
-                  type: "array",
-                  minItems: 2,
-                  maxItems: 4,
-
-                  items: {
-                    type: "string"
-                  }
-                },
-
-                confidence: {
-                  type: "string",
-                  enum: [
-                    "high",
-                    "medium",
-                    "low"
-                  ]
-                }
-              },
-
-              required: [
-                "summary",
-                "details",
-                "confidence"
-              ]
-            },
-
-            why: {
-              type: "object",
-              additionalProperties: false,
-
-              properties: {
-                summary: {
-                  type: "string"
-                },
-
-                details: {
-                  type: "array",
-                  minItems: 2,
-                  maxItems: 4,
-
-                  items: {
-                    type: "string"
-                  }
-                },
-
-                confidence: {
-                  type: "string",
-                  enum: [
-                    "high",
-                    "medium",
-                    "low"
-                  ]
-                }
-              },
-
-              required: [
-                "summary",
-                "details",
-                "confidence"
-              ]
-            }
-          },
-
-          required: [
-            "overview",
-            "who",
-            "what",
-            "why"
-          ]
-        }
+        schema
       }
     }
   };
 
   console.log("OpenAI keyword:", keyword);
+
+  /*
+   * Log whether the key exists, but never print the actual API key.
+   */
+  console.log(
+    "OpenAI key configured:",
+    Boolean(OPENAI_API_KEY)
+  );
 
   const response = await fetch(openAIEndpoint, {
     method: "POST",
@@ -585,80 +552,82 @@ Rules:
   const responseText = await response.text();
 
   console.log("OpenAI status:", response.status);
+
+  /*
+   * This is necessary while debugging.
+   * It prints the response but never prints the API key.
+   */
   console.log(
     "OpenAI raw response:",
-    responseText.slice(0, 5000)
+    responseText.slice(0, 8000)
   );
 
-  if (!response.ok) {
-    console.error(
-      "OpenAI error:",
-      responseText.slice(0, 2000)
-    );
-
-    let openAIErrorMessage =
-      `OpenAI request failed with status ${response.status}`;
-
-    try {
-      const errorData =
-        JSON.parse(responseText);
-
-      if (errorData?.error?.message) {
-        openAIErrorMessage =
-          errorData.error.message;
-      }
-    } catch {
-      // Keep fallback error message.
-    }
-
-    throw new Error(openAIErrorMessage);
-  }
-
-  let data;
+  let responseData = null;
 
   try {
-    data = JSON.parse(responseText);
+    responseData = JSON.parse(responseText);
   } catch {
+    if (!response.ok) {
+      throw new Error(
+        `OpenAI request failed with status ${response.status}`
+      );
+    }
+
     throw new Error(
-      "OpenAI returned invalid JSON"
+      "OpenAI returned a response that was not valid JSON"
     );
   }
 
-  if (data?.status === "incomplete") {
-    throw new Error(
-      data?.incomplete_details?.reason ||
-      "OpenAI response was incomplete"
-    );
+  if (!response.ok) {
+    const apiMessage =
+      responseData?.error?.message ||
+      responseData?.error?.code ||
+      `OpenAI request failed with status ${response.status}`;
+
+    throw new Error(apiMessage);
   }
 
-  if (data?.status === "failed") {
+  if (responseData?.status === "failed") {
     throw new Error(
-      data?.error?.message ||
+      responseData?.error?.message ||
       "OpenAI response failed"
     );
   }
 
+  if (responseData?.status === "incomplete") {
+    throw new Error(
+      responseData?.incomplete_details?.reason ||
+      "OpenAI response was incomplete"
+    );
+  }
+
   const outputText =
-    extractOpenAIOutputText(data);
+    extractOpenAIOutputText(responseData);
+
+  console.log(
+    "Extracted OpenAI output:",
+    outputText.slice(0, 5000)
+  );
 
   if (!outputText) {
     throw new Error(
-      "OpenAI returned no overview content"
+      "OpenAI completed the request but returned no output text"
     );
   }
+
+  let overview;
 
   try {
-    return JSON.parse(outputText);
+    overview = JSON.parse(outputText);
   } catch {
-    console.error(
-      "Unparseable OpenAI output:",
-      outputText
-    );
-
     throw new Error(
-      "OpenAI overview was not valid structured JSON"
+      "OpenAI returned output text, but it was not valid JSON"
     );
   }
+
+  validateOverviewResponse(overview);
+
+  return overview;
 }
 
 /**
