@@ -1,150 +1,360 @@
-const searchForm = document.querySelector("#search-form");
-const searchButton = document.querySelector("#search-button");
+const searchForm =
+  document.querySelector("#search-form");
 
-const resultsTitle = document.querySelector("#results-title");
-const resultsCount = document.querySelector("#results-count");
-const resultsList = document.querySelector("#results-list");
+const searchButton =
+  document.querySelector("#search-button");
 
-const statusBox = document.querySelector("#status");
-const resultTemplate = document.querySelector("#result-template");
+const resultsTitle =
+  document.querySelector("#results-title");
 
-searchForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
+const resultsCount =
+  document.querySelector("#results-count");
 
-  const formData = new FormData(searchForm);
+const resultsList =
+  document.querySelector("#results-list");
 
-  const keyword = String(
-    formData.get("keyword") || ""
-  ).trim();
+const statusBox =
+  document.querySelector("#status");
 
-  if (!keyword) {
-    showError("Please enter a keyword.");
-    return;
-  }
+const resultTemplate =
+  document.querySelector("#result-template");
 
-  startLoading();
+const overviewStatus =
+  document.querySelector("#overview-status");
 
-  try {
-    const response = await fetch("/api/search", {
-      method: "POST",
+const overviewMessage =
+  document.querySelector("#overview-message");
 
-      headers: {
-        "Content-Type": "application/json"
-      },
+const overviewContent =
+  document.querySelector("#overview-content");
 
-      body: JSON.stringify({
-        keyword
-      })
-    });
+searchForm.addEventListener(
+  "submit",
+  async (event) => {
+    event.preventDefault();
 
-    let data;
+    const formData =
+      new FormData(searchForm);
+
+    const keyword = String(
+      formData.get("keyword") || ""
+    ).trim();
+
+    if (!keyword) {
+      showArticleError(
+        "Please enter a keyword."
+      );
+
+      return;
+    }
+
+    startLoading(keyword);
 
     try {
-      data = await response.json();
-    } catch {
-      throw new Error(
-        "Server returned a response that is not valid JSON."
+      const response =
+        await fetch("/api/research", {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body: JSON.stringify({
+            keyword
+          })
+        });
+
+      let data;
+
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error(
+          "Server returned invalid JSON."
+        );
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+          "Research request failed."
+        );
+      }
+
+      renderResearch(data);
+    } catch (error) {
+      console.error(
+        "Research frontend error:",
+        error
       );
-    }
 
-    if (!response.ok || data.success === false) {
-      throw new Error(
-        data.details
-          ? `${data.error}: ${data.details}`
-          : data.error || "Search failed."
+      showArticleError(
+        error?.message ||
+        "Research request failed."
       );
+
+      showOverviewError(
+        error?.message ||
+        "AI Overview failed."
+      );
+    } finally {
+      stopLoading();
     }
-
-    renderResults(data);
-  } catch (error) {
-    console.error("Frontend search error:", error);
-
-    showError(
-      error?.message || "The search could not be completed."
-    );
-  } finally {
-    stopLoading();
   }
-});
+);
 
-function startLoading() {
+function startLoading(keyword) {
   searchButton.disabled = true;
-  searchButton.textContent = "Searching Google...";
+  searchButton.textContent =
+    "Running research...";
 
-  resultsTitle.textContent = "Searching...";
-  resultsCount.textContent = "0 articles";
+  resultsTitle.textContent =
+    `Searching for “${keyword}”`;
+
+  resultsCount.textContent =
+    "Searching";
 
   resultsList.replaceChildren();
 
   statusBox.textContent =
-    "Apify is collecting Google search results.";
+    "Apify is searching and crawling candidate articles.";
 
-  statusBox.className = "status";
+  statusBox.className =
+    "status";
+
+  overviewStatus.textContent =
+    "Generating";
+
+  overviewStatus.className =
+    "overview-status loading";
+
+  overviewMessage.textContent =
+    "OpenAI is analysing the keyword independently.";
+
+  overviewMessage.className =
+    "overview-message";
+
+  overviewContent.classList.add(
+    "hidden"
+  );
 }
 
 function stopLoading() {
   searchButton.disabled = false;
-  searchButton.textContent = "Run research search";
+  searchButton.textContent =
+    "Run research search";
 }
 
-function renderResults(data) {
-  const results = Array.isArray(data.results)
-    ? data.results
-    : [];
+function renderResearch(data) {
+  if (data.overview?.success) {
+    renderOverview(
+      data.overview.data
+    );
+  } else {
+    showOverviewError(
+      data.overview?.error ||
+      "AI Overview could not be generated."
+    );
+  }
+
+  if (data.articles?.success) {
+    renderResults(
+      data.keyword,
+      data.articles.results
+    );
+  } else {
+    showArticleError(
+      data.articles?.error ||
+      "Articles could not be collected."
+    );
+  }
+}
+
+function renderOverview(overview) {
+  const sequence = [
+    {
+      key: "who",
+      data: overview?.who
+    },
+    {
+      key: "what",
+      data: overview?.what
+    },
+    {
+      key: "why",
+      data: overview?.why
+    }
+  ];
+
+  for (const section of sequence) {
+    const sectionData =
+      section.data || {};
+
+    const summary =
+      document.querySelector(
+        `#${section.key}-summary`
+      );
+
+    const details =
+      document.querySelector(
+        `#${section.key}-details`
+      );
+
+    const confidence =
+      document.querySelector(
+        `#${section.key}-confidence`
+      );
+
+    summary.textContent =
+      sectionData.summary ||
+      "No summary generated.";
+
+    details.replaceChildren();
+
+    const detailItems =
+      Array.isArray(sectionData.details)
+        ? sectionData.details
+        : [];
+
+    for (const detail of detailItems) {
+      const listItem =
+        document.createElement("li");
+
+      listItem.textContent = detail;
+
+      details.appendChild(listItem);
+    }
+
+    confidence.textContent =
+      `${sectionData.confidence || "unknown"} confidence`;
+
+    confidence.dataset.level =
+      sectionData.confidence || "unknown";
+  }
+
+  overviewStatus.textContent =
+    "Generated";
+
+  overviewStatus.className =
+    "overview-status success";
+
+  overviewMessage.classList.add(
+    "hidden"
+  );
+
+  overviewContent.classList.remove(
+    "hidden"
+  );
+}
+
+function showOverviewError(message) {
+  overviewStatus.textContent =
+    "Failed";
+
+  overviewStatus.className =
+    "overview-status error";
+
+  overviewMessage.textContent = message;
+
+  overviewMessage.className =
+    "overview-message error";
+
+  overviewContent.classList.add(
+    "hidden"
+  );
+}
+
+function renderResults(keyword, results) {
+  const safeResults =
+    Array.isArray(results)
+      ? results
+      : [];
 
   resultsTitle.textContent =
-    `Results for “${data.keyword || ""}”`;
+    `Results for “${keyword}”`;
 
   resultsCount.textContent =
-    `${results.length} article${results.length === 1 ? "" : "s"}`;
+    `${safeResults.length} article${
+      safeResults.length === 1
+        ? ""
+        : "s"
+    }`;
 
   resultsList.replaceChildren();
 
-  if (results.length === 0) {
+  if (!safeResults.length) {
     statusBox.textContent =
-      "Apify completed the search, but no organic results were detected.";
+      "Search completed, but no eligible articles were found.";
 
-    statusBox.className = "status";
+    statusBox.className =
+      "status";
+
     return;
   }
 
-  statusBox.className = "status hidden";
+  statusBox.className =
+    "status hidden";
 
-  const fragment = document.createDocumentFragment();
+  const fragment =
+    document.createDocumentFragment();
 
-  results.forEach((result, index) => {
-    const item = resultTemplate.content.cloneNode(true);
+  safeResults.forEach(
+    (result, index) => {
+      const item =
+        resultTemplate.content.cloneNode(
+          true
+        );
 
-    item.querySelector(".result-position").textContent =
-      String(result.position || index + 1).padStart(2, "0");
+      item.querySelector(
+        ".result-position"
+      ).textContent =
+        String(
+          result.position ||
+          index + 1
+        ).padStart(2, "0");
 
-    item.querySelector(".result-domain").textContent =
-      result.domain || "Unknown domain";
+      item.querySelector(
+        ".result-domain"
+      ).textContent =
+        result.domain ||
+        "Unknown domain";
 
-    const titleElement =
-      item.querySelector(".result-title");
+      const titleElement =
+        item.querySelector(
+          ".result-title"
+        );
 
-    titleElement.textContent =
-      result.title || "Untitled article";
+      titleElement.textContent =
+        result.title ||
+        "Untitled article";
 
-    titleElement.href = result.url || "#";
+      titleElement.href =
+        result.url || "#";
 
-    item.querySelector(".result-description").textContent =
-      result.description ||
-      "No search description available.";
+      item.querySelector(
+        ".result-description"
+      ).textContent =
+        result.description ||
+        "No description available.";
 
-    fragment.appendChild(item);
-  });
+      fragment.appendChild(item);
+    }
+  );
 
   resultsList.appendChild(fragment);
 }
 
-function showError(message) {
-  resultsTitle.textContent = "Search results";
-  resultsCount.textContent = "0 articles";
+function showArticleError(message) {
+  resultsTitle.textContent =
+    "Search results";
+
+  resultsCount.textContent =
+    "Failed";
 
   resultsList.replaceChildren();
 
   statusBox.textContent = message;
-  statusBox.className = "status error";
+  statusBox.className =
+    "status error";
 }
