@@ -919,3 +919,185 @@ button:disabled {
     flex-direction: column;
   }
 }
+
+/* Research source links */
+
+.research-resources {
+  padding-top: 4px;
+
+  display: grid;
+  gap: 12px;
+}
+
+.resources-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+
+  gap: 12px;
+}
+
+.resources-label {
+  display: block;
+
+  margin-bottom: 5px;
+
+  color: var(--accent);
+
+  font-size: 10px;
+  font-weight: 800;
+
+  letter-spacing: 0.12em;
+}
+
+.resources-heading h3 {
+  margin: 0;
+
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.resources-status {
+  padding: 6px 8px;
+
+  color: var(--muted);
+  background: #ecece6;
+
+  border-radius: 999px;
+
+  font-size: 10px;
+  font-weight: 750;
+
+  white-space: nowrap;
+}
+
+.resources-status.loading,
+.resources-status.partial {
+  color: var(--yellow);
+  background: var(--yellow-soft);
+}
+
+.resources-status.success {
+  color: var(--green);
+  background: var(--green-soft);
+}
+
+.resources-status.error {
+  color: var(--red);
+  background: var(--red-soft);
+}
+
+.resources-list {
+  display: grid;
+  gap: 8px;
+}
+
+.resource-link {
+  min-width: 0;
+
+  padding: 12px;
+
+  display: grid;
+
+  grid-template-columns:
+    30px minmax(0, 1fr) 18px;
+
+  align-items: center;
+  gap: 10px;
+
+  color: var(--text);
+  background: var(--surface-soft);
+
+  border: 1px solid var(--border);
+  border-radius: 11px;
+
+  text-decoration: none;
+
+  transition:
+    border-color 150ms ease,
+    transform 150ms ease,
+    background 150ms ease;
+}
+
+.resource-link.is-connected:hover {
+  border-color: var(--text);
+  background: white;
+
+  transform:
+    translateY(-1px);
+}
+
+.resource-link.is-missing,
+.resource-link.is-loading {
+  cursor: default;
+  opacity: 0.62;
+}
+
+.resource-index {
+  width: 28px;
+  height: 28px;
+
+  display: grid;
+  place-items: center;
+
+  color: var(--muted);
+  background: #ecece6;
+
+  border-radius: 8px;
+
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.resource-link.is-connected
+.resource-index {
+  color: var(--green);
+  background: var(--green-soft);
+}
+
+.resource-info {
+  min-width: 0;
+}
+
+.resource-info strong,
+.resource-info span {
+  display: block;
+}
+
+.resource-info strong {
+  overflow: hidden;
+
+  font-size: 12px;
+  line-height: 1.4;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resource-info span {
+  margin-top: 2px;
+
+  color: var(--muted);
+
+  font-size: 10px;
+}
+
+.resource-arrow {
+  color: var(--muted);
+
+  font-size: 14px;
+}
+
+.resource-link.is-connected
+.resource-arrow {
+  color: var(--text);
+}
+
+.resources-note {
+  margin: 0;
+
+  color: var(--muted);
+
+  font-size: 10px;
+  line-height: 1.45;
+}
