@@ -13,11 +13,14 @@ searchForm.addEventListener("submit", async (event) => {
 
   const formData = new FormData(searchForm);
 
-  const requestData = {
-    keyword: formData.get("keyword"),
-    countryCode: formData.get("countryCode"),
-    languageCode: formData.get("languageCode")
-  };
+  const keyword = String(
+    formData.get("keyword") || ""
+  ).trim();
+
+  if (!keyword) {
+    showError("Please enter a keyword.");
+    return;
+  }
 
   startLoading();
 
@@ -29,20 +32,36 @@ searchForm.addEventListener("submit", async (event) => {
         "Content-Type": "application/json"
       },
 
-      body: JSON.stringify(requestData)
+      body: JSON.stringify({
+        keyword
+      })
     });
 
-    const data = await response.json();
+    let data;
 
-    if (!response.ok) {
+    try {
+      data = await response.json();
+    } catch {
       throw new Error(
-        data.error || "The search could not be completed"
+        "Server returned a response that is not valid JSON."
+      );
+    }
+
+    if (!response.ok || data.success === false) {
+      throw new Error(
+        data.details
+          ? `${data.error}: ${data.details}`
+          : data.error || "Search failed."
       );
     }
 
     renderResults(data);
   } catch (error) {
-    showError(error.message);
+    console.error("Frontend search error:", error);
+
+    showError(
+      error?.message || "The search could not be completed."
+    );
   } finally {
     stopLoading();
   }
@@ -55,10 +74,10 @@ function startLoading() {
   resultsTitle.textContent = "Searching...";
   resultsCount.textContent = "0 articles";
 
-  resultsList.innerHTML = "";
+  resultsList.replaceChildren();
 
   statusBox.textContent =
-    "Apify is collecting the first Google result page.";
+    "Apify is collecting Google search results.";
 
   statusBox.className = "status";
 }
@@ -69,29 +88,35 @@ function stopLoading() {
 }
 
 function renderResults(data) {
-  resultsTitle.textContent = `Results for “${data.keyword}”`;
+  const results = Array.isArray(data.results)
+    ? data.results
+    : [];
+
+  resultsTitle.textContent =
+    `Results for “${data.keyword || ""}”`;
 
   resultsCount.textContent =
-    `${data.count} article${data.count === 1 ? "" : "s"}`;
+    `${results.length} article${results.length === 1 ? "" : "s"}`;
 
-  resultsList.innerHTML = "";
+  resultsList.replaceChildren();
 
-  if (!data.results.length) {
+  if (results.length === 0) {
     statusBox.textContent =
-      "Search completed, but no organic articles were found.";
+      "Apify completed the search, but no organic results were detected.";
 
     statusBox.className = "status";
-
     return;
   }
 
   statusBox.className = "status hidden";
 
-  data.results.forEach((result) => {
+  const fragment = document.createDocumentFragment();
+
+  results.forEach((result, index) => {
     const item = resultTemplate.content.cloneNode(true);
 
     item.querySelector(".result-position").textContent =
-      String(result.position).padStart(2, "0");
+      String(result.position || index + 1).padStart(2, "0");
 
     item.querySelector(".result-domain").textContent =
       result.domain || "Unknown domain";
@@ -99,21 +124,26 @@ function renderResults(data) {
     const titleElement =
       item.querySelector(".result-title");
 
-    titleElement.textContent = result.title;
-    titleElement.href = result.url;
+    titleElement.textContent =
+      result.title || "Untitled article";
+
+    titleElement.href = result.url || "#";
 
     item.querySelector(".result-description").textContent =
-      result.description || "No search description available.";
+      result.description ||
+      "No search description available.";
 
-    resultsList.appendChild(item);
+    fragment.appendChild(item);
   });
+
+  resultsList.appendChild(fragment);
 }
 
 function showError(message) {
   resultsTitle.textContent = "Search results";
   resultsCount.textContent = "0 articles";
 
-  resultsList.innerHTML = "";
+  resultsList.replaceChildren();
 
   statusBox.textContent = message;
   statusBox.className = "status error";
