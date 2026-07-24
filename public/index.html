@@ -1,1 +1,188 @@
-.
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>F.Learning Research Tool</title>
+
+  <link
+    rel="stylesheet"
+    href="/styles.css"
+  >
+</head>
+
+<body>
+  <main class="app">
+    <header class="header">
+      <div class="brand">
+        <div class="brand-logo">F.</div>
+
+        <div>
+          <strong>F.Learning Research</strong>
+          <span>Blog Concept Ownership</span>
+        </div>
+      </div>
+
+      <div class="stage">
+        Stage 1 · Research
+      </div>
+    </header>
+
+    <section class="hero">
+      <p class="eyebrow">
+        KEYWORD RESEARCH
+      </p>
+
+      <h1>
+        Start with a keyword.
+      </h1>
+
+      <p class="hero-description">
+        Search Google through Apify and collect the first
+        10 competitor articles.
+      </p>
+    </section>
+
+    <section class="workspace">
+      <form
+        id="search-form"
+        class="search-panel"
+      >
+        <div class="field">
+          <label for="keyword">
+            Primary keyword
+          </label>
+
+          <input
+            id="keyword"
+            name="keyword"
+            type="text"
+            placeholder="Example: employee onboarding video"
+            required
+          >
+        </div>
+
+        <div class="field">
+          <label for="countryCode">
+            Country
+          </label>
+
+          <select
+            id="countryCode"
+            name="countryCode"
+          >
+            <option value="us">
+              United States
+            </option>
+
+            <option value="gb">
+              United Kingdom
+            </option>
+
+            <option value="de">
+              Germany
+            </option>
+
+            <option value="au">
+              Australia
+            </option>
+
+            <option value="ca">
+              Canada
+            </option>
+
+            <option value="vn">
+              Vietnam
+            </option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="languageCode">
+            Language
+          </label>
+
+          <select
+            id="languageCode"
+            name="languageCode"
+          >
+            <option value="en">
+              English
+            </option>
+
+            <option value="de">
+              German
+            </option>
+
+            <option value="vi">
+              Vietnamese
+            </option>
+          </select>
+        </div>
+
+        <button
+          id="search-button"
+          type="submit"
+        >
+          Run research search
+        </button>
+      </form>
+
+      <section class="results-panel">
+        <div class="results-header">
+          <div>
+            <p class="eyebrow">
+              COMPETITOR SET
+            </p>
+
+            <h2 id="results-title">
+              Search results
+            </h2>
+          </div>
+
+          <span id="results-count">
+            0 articles
+          </span>
+        </div>
+
+        <div
+          id="status"
+          class="status"
+        >
+          Enter a keyword to begin.
+        </div>
+
+        <ol
+          id="results-list"
+          class="results-list"
+        ></ol>
+      </section>
+    </section>
+  </main>
+
+  <template id="result-template">
+    <li class="result-card">
+      <div class="result-position"></div>
+
+      <div class="result-content">
+        <div class="result-domain"></div>
+
+        <a
+          class="result-title"
+          target="_blank"
+          rel="noopener noreferrer"
+        ></a>
+
+        <p class="result-description"></p>
+      </div>
+    </li>
+  </template>
+
+  <script src="/app.js"></script>
+</body>
+</html>
