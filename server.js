@@ -34,6 +34,51 @@ app.get("/api/health", (req, res) => {
  * Apify and OpenAI run in parallel.
  * OpenAI only receives the keyword.
  */
+/**
+ * Keyword-only AI Overview endpoint.
+ *
+ * This endpoint is independent from Apify.
+ */
+app.post("/api/overview", async (req, res) => {
+  try {
+    const keyword = cleanKeyword(req.body?.keyword);
+
+    if (!keyword) {
+      return res.status(400).json({
+        success: false,
+        error: "Keyword is required",
+        data: null
+      });
+    }
+
+    console.log("Starting OpenAI Overview:", keyword);
+
+    const overview =
+      await generateKeywordOverview(keyword);
+
+    console.log("OpenAI Overview completed:", keyword);
+
+    return res.json({
+      success: true,
+      keyword,
+      data: overview
+    });
+  } catch (error) {
+    console.error(
+      "Overview route error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      error:
+        error?.message ||
+        "AI Overview failed",
+      data: null
+    });
+  }
+});
+
 app.post("/api/research", async (req, res) => {
   try {
     const keyword = cleanKeyword(req.body?.keyword);
