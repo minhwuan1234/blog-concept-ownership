@@ -158,7 +158,7 @@ async function searchArticlesWithApify(keyword) {
      * Request more than 10 because social media,
      * Wikipedia and duplicate domains may be removed.
      */
-    maxResults: 20,
+    maxResults: 3,
 
     outputFormats: [
       "markdown"
