@@ -574,3 +574,16 @@ button:disabled {
     gap: 8px;
   }
 }
+.overview-answer-card {
+  background: #fafaf7;
+}
+
+.overview-answer-card .intent-number {
+  color: var(--text);
+  background: var(--accent);
+}
+
+.overview-answer {
+  font-size: 18px;
+  line-height: 1.65;
+}
