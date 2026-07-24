@@ -172,6 +172,50 @@ function renderResearch(data) {
 }
 
 function renderOverview(overview) {
+  const overviewData =
+    overview?.overview || {};
+
+  const overviewAnswer =
+    document.querySelector(
+      "#ai-overview-answer"
+    );
+
+  const overviewPoints =
+    document.querySelector(
+      "#ai-overview-points"
+    );
+
+  const overviewConfidence =
+    document.querySelector(
+      "#ai-overview-confidence"
+    );
+
+  overviewAnswer.textContent =
+    overviewData.answer ||
+    "No overview generated.";
+
+  overviewPoints.replaceChildren();
+
+  const keyPoints =
+    Array.isArray(overviewData.keyPoints)
+      ? overviewData.keyPoints
+      : [];
+
+  for (const point of keyPoints) {
+    const listItem =
+      document.createElement("li");
+
+    listItem.textContent = point;
+
+    overviewPoints.appendChild(listItem);
+  }
+
+  overviewConfidence.textContent =
+    `${overviewData.confidence || "unknown"} confidence`;
+
+  overviewConfidence.dataset.level =
+    overviewData.confidence || "unknown";
+
   const sequence = [
     {
       key: "who",
@@ -187,65 +231,7 @@ function renderOverview(overview) {
     }
   ];
 
-  for (const section of sequence) {
-    const sectionData =
-      section.data || {};
-
-    const summary =
-      document.querySelector(
-        `#${section.key}-summary`
-      );
-
-    const details =
-      document.querySelector(
-        `#${section.key}-details`
-      );
-
-    const confidence =
-      document.querySelector(
-        `#${section.key}-confidence`
-      );
-
-    summary.textContent =
-      sectionData.summary ||
-      "No summary generated.";
-
-    details.replaceChildren();
-
-    const detailItems =
-      Array.isArray(sectionData.details)
-        ? sectionData.details
-        : [];
-
-    for (const detail of detailItems) {
-      const listItem =
-        document.createElement("li");
-
-      listItem.textContent = detail;
-
-      details.appendChild(listItem);
-    }
-
-    confidence.textContent =
-      `${sectionData.confidence || "unknown"} confidence`;
-
-    confidence.dataset.level =
-      sectionData.confidence || "unknown";
-  }
-
-  overviewStatus.textContent =
-    "Generated";
-
-  overviewStatus.className =
-    "overview-status success";
-
-  overviewMessage.classList.add(
-    "hidden"
-  );
-
-  overviewContent.classList.remove(
-    "hidden"
-  );
+  // Giữ nguyên phần code còn lại của hàm.
 }
 
 function showOverviewError(message) {
