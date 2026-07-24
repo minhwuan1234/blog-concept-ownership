@@ -8,7 +8,9 @@
     content="width=device-width, initial-scale=1.0"
   >
 
-  <title>F.Learning Research Tool</title>
+  <title>
+    F.Learning Research Tool
+  </title>
 
   <link
     rel="stylesheet"
@@ -50,13 +52,13 @@
       </h1>
 
       <p class="hero-description">
-        Search and collect the highest-ranking competitor articles
-        while generating a keyword-only AI search intent overview.
+        Generate search intent, analyse competitor content
+        and identify gaps your team can credibly own.
       </p>
     </section>
 
     <section class="workspace">
-      <!-- LEFT PANEL -->
+      <!-- LEFT INPUT PANEL -->
       <form
         id="search-form"
         class="search-panel"
@@ -78,90 +80,51 @@
         </div>
 
         <div class="field">
-          <label for="countryCode">
-            Country
+          <label for="companyContext">
+            Company positioning and past examples
           </label>
 
-          <select
-            id="countryCode"
-            name="countryCode"
-          >
-            <option value="us">
-              United States
-            </option>
+          <textarea
+            id="companyContext"
+            name="companyContext"
+            rows="10"
+            maxlength="20000"
+            placeholder="Paste F.Learning positioning, relevant experience, case studies, internal frameworks or previous content examples here."
+          ></textarea>
 
-            <option value="gb">
-              United Kingdom
-            </option>
-
-            <option value="de">
-              Germany
-            </option>
-
-            <option value="au">
-              Australia
-            </option>
-
-            <option value="ca">
-              Canada
-            </option>
-
-            <option value="vn">
-              Vietnam
-            </option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="languageCode">
-            Language
-          </label>
-
-          <select
-            id="languageCode"
-            name="languageCode"
-          >
-            <option value="en">
-              English
-            </option>
-
-            <option value="de">
-              German
-            </option>
-
-            <option value="vi">
-              Vietnamese
-            </option>
-          </select>
+          <p class="field-help">
+            This context is used only for Team’s Exclusive Angles.
+            Without evidence, angles will be marked as potential.
+          </p>
         </div>
 
         <button
           id="search-button"
           type="submit"
         >
-          Run research search
+          Run research
         </button>
       </form>
 
-      <!-- AI OVERVIEW -->
+      <!-- SEARCH INTENT -->
       <section
+        class="content-panel"
         id="overview-panel"
-        class="overview-panel"
       >
-        <div class="overview-header">
+        <div class="panel-header">
           <div>
             <p class="eyebrow">
-              AI OVERVIEW
+              SEARCH INTENT
             </p>
 
             <h2>
-              Search Intent
+              Keyword Overview
             </h2>
           </div>
 
           <span
             id="overview-status"
-            class="overview-status"
+            class="panel-status"
           >
             Waiting
           </span>
@@ -169,55 +132,52 @@
 
         <div
           id="overview-message"
-          class="overview-message"
+          class="panel-message"
         >
-          Enter a keyword to generate WHO, WHAT and WHY.
+          Enter a keyword to generate the overview.
         </div>
 
         <div
           id="overview-content"
-          class="overview-content hidden"
+          class="panel-content hidden"
         >
-          <!-- AI OVERVIEW -->
-<article class="intent-card overview-answer-card">
-  <div class="intent-number">
-    AI
-  </div>
+          <article class="intent-card overview-answer-card">
+            <div class="intent-number">
+              AI
+            </div>
 
-  <div class="intent-body">
-    <div class="intent-heading">
-      <h3>
-        AI OVERVIEW
-      </h3>
+            <div>
+              <div class="intent-heading">
+                <h3>
+                  AI OVERVIEW
+                </h3>
 
-      <span
-        id="ai-overview-confidence"
-        class="confidence"
-      ></span>
-    </div>
+                <span
+                  id="ai-overview-confidence"
+                  class="confidence"
+                ></span>
+              </div>
 
-    <p
-      id="ai-overview-answer"
-      class="intent-summary overview-answer"
-    ></p>
+              <p
+                id="ai-overview-answer"
+                class="intent-summary"
+              ></p>
 
-    <ul
-      id="ai-overview-points"
-      class="intent-details"
-    ></ul>
-  </div>
-</article>
-          <!-- WHO -->
+              <ul
+                id="ai-overview-points"
+                class="detail-list"
+              ></ul>
+            </div>
+          </article>
+
           <article class="intent-card">
             <div class="intent-number">
               01
             </div>
 
-            <div class="intent-body">
+            <div>
               <div class="intent-heading">
-                <h3>
-                  WHO
-                </h3>
+                <h3>WHO</h3>
 
                 <span
                   id="who-confidence"
@@ -232,22 +192,19 @@
 
               <ul
                 id="who-details"
-                class="intent-details"
+                class="detail-list"
               ></ul>
             </div>
           </article>
 
-          <!-- WHAT -->
           <article class="intent-card">
             <div class="intent-number">
               02
             </div>
 
-            <div class="intent-body">
+            <div>
               <div class="intent-heading">
-                <h3>
-                  WHAT
-                </h3>
+                <h3>WHAT</h3>
 
                 <span
                   id="what-confidence"
@@ -262,22 +219,19 @@
 
               <ul
                 id="what-details"
-                class="intent-details"
+                class="detail-list"
               ></ul>
             </div>
           </article>
 
-          <!-- WHY -->
           <article class="intent-card">
             <div class="intent-number">
               03
             </div>
 
-            <div class="intent-body">
+            <div>
               <div class="intent-heading">
-                <h3>
-                  WHY
-                </h3>
+                <h3>WHY</h3>
 
                 <span
                   id="why-confidence"
@@ -292,34 +246,151 @@
 
               <ul
                 id="why-details"
-                class="intent-details"
+                class="detail-list"
               ></ul>
             </div>
           </article>
         </div>
       </section>
 
-      <!-- COMPETITOR RESULTS -->
-      <section class="results-panel">
-        <div class="results-header">
+      <!-- STRENGTHS / WEAKNESSES -->
+      <section
+        class="content-panel"
+        id="competitor-map-panel"
+      >
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">
+              COMPETITOR ANALYSIS
+            </p>
+
+            <h2>
+              Strengths &amp; Weaknesses Map
+            </h2>
+          </div>
+
+          <span
+            id="competitor-status"
+            class="panel-status"
+          >
+            Waiting
+          </span>
+        </div>
+
+        <div
+          id="competitor-message"
+          class="panel-message"
+        >
+          Competitor analysis will appear here.
+        </div>
+
+        <div
+          id="competitor-map"
+          class="competitor-map hidden"
+        ></div>
+      </section>
+
+      <!-- EXCLUSIVE ANGLES -->
+      <section
+        class="content-panel"
+        id="angles-panel"
+      >
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">
+              CONTENT OWNERSHIP
+            </p>
+
+            <h2>
+              Team’s Exclusive Angles
+            </h2>
+          </div>
+
+          <span
+            id="angles-count"
+            class="panel-count"
+          >
+            0 angles
+          </span>
+        </div>
+
+        <div
+          id="angles-message"
+          class="panel-message"
+        >
+          Exclusive angles will appear after competitor analysis.
+        </div>
+
+        <div
+          id="angles-list"
+          class="angles-list hidden"
+        ></div>
+      </section>
+
+      <!-- OPEN QUESTIONS -->
+      <section
+        class="content-panel"
+        id="questions-panel"
+      >
+        <div class="panel-header">
+          <div>
+            <p class="eyebrow">
+              RESEARCH GAPS
+            </p>
+
+            <h2>
+              Open Questions
+            </h2>
+          </div>
+
+          <span
+            id="questions-count"
+            class="panel-count"
+          >
+            0 questions
+          </span>
+        </div>
+
+        <div
+          id="questions-message"
+          class="panel-message"
+        >
+          Unverified and missing information will appear here.
+        </div>
+
+        <div
+          id="questions-list"
+          class="questions-list hidden"
+        ></div>
+      </section>
+
+      <!-- ARTICLES -->
+      <section
+        class="content-panel"
+        id="articles-panel"
+      >
+        <div class="panel-header">
           <div>
             <p class="eyebrow">
               COMPETITOR SET
             </p>
 
             <h2 id="results-title">
-              Search results
+              Search Results
             </h2>
           </div>
 
-          <span id="results-count">
+          <span
+            id="results-count"
+            class="panel-count"
+          >
             0 articles
           </span>
         </div>
 
         <div
           id="status"
-          class="status"
+          class="panel-message"
         >
           Enter a keyword to begin.
         </div>
@@ -332,12 +403,11 @@
     </section>
   </main>
 
-  <!-- ARTICLE RESULT TEMPLATE -->
   <template id="result-template">
     <li class="result-card">
       <div class="result-position"></div>
 
-      <div class="result-content">
+      <div>
         <div class="result-domain"></div>
 
         <a
